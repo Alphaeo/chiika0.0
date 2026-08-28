@@ -1,0 +1,6 @@
+torch
+tokenizers
+Pillow
+numpy
+pytest
+tqdm
