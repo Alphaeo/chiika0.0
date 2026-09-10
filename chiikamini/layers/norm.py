@@ -37,7 +37,8 @@ class RMSNorm(nn.Module):
         est en float16/bfloat16 (x.float()), puis reconverti a la fin --
         RMSNorm est numeriquement fragile en basse precision.
         """
-        raise NotImplementedError
+        RMS = torch.sqrt(torch.mean(x.float() ** 2, dim=-1, keepdim=True) + self.eps)
+        return (x / RMS) * self.weight
 
 
 class QKNorm(nn.Module):
@@ -63,4 +64,6 @@ class QKNorm(nn.Module):
         agit deja sur la derniere dimension, donc rien de special a faire
         pour le multi-tete -- juste appeler les deux sous-modules).
         """
-        raise NotImplementedError
+        q_normed = self.q_norm(q)
+        k_normed = self.k_norm(k)
+        return q_normed, k_normed

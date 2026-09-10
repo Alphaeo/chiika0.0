@@ -35,7 +35,10 @@ class Attention(nn.Module):
         # - wq : dim -> n_heads * head_dim
         # - wk, wv : dim -> n_kv_heads * head_dim
         # - wo : n_heads * head_dim -> dim (projection de sortie)
-        raise NotImplementedError
+        self.wq = nn.Linear(dim, n_heads * self.head_dim, bias=False)
+        self.wk = nn.Linear(dim, n_kv_heads * self.head_dim, bias=False)
+        self.wv = nn.Linear(dim, n_kv_heads * self.head_dim, bias=False)
+        self.wo = nn.Linear(n_heads * self.head_dim, dim, bias=False)
 
         self.qk_norm = QKNorm(self.head_dim, eps=norm_eps) if use_qk_norm else None
 

@@ -29,7 +29,10 @@ def precompute_rope_freqs(head_dim: int, max_seq_len: int, theta: float = 10000.
        complexe, pratique pour l'etape suivante) -- ou (cos(angles), sin(angles))
        si tu evites les tensors complexes.
     """
-    raise NotImplementedError
+    freqs_i = 1.0 / (theta ** (torch.arange(0, head_dim, 2) / head_dim))  # shape (head_dim/2,)
+    positions = torch.arange(max_seq_len)  # shape (max_seq_len,)
+    angles = torch.outer(positions, freqs_i)  # shape (max_seq_len, head_dim/2)
+    return torch.polar(torch.ones_like(angles), angles)  # forme complexe
 
 
 def apply_rotary_emb(x: torch.Tensor, rope_freqs: torch.Tensor) -> torch.Tensor:
@@ -55,4 +58,8 @@ def apply_rotary_emb(x: torch.Tensor, rope_freqs: torch.Tensor) -> torch.Tensor:
     Test attendu : ||apply_rotary_emb(x, freqs)|| == ||x|| (a epsilon
     pres) pour chaque vecteur de tete -- une rotation preserve la norme.
     """
-    raise NotImplementedError
+    x_complex = torch.view_as_complex(x.float().reshape(*x.shape[:-1],-1,2))  # shape (batch, n_heads, seq, head_dim/2)
+    rope_freqs_complex = rope_freqs.reshape(1,1,*rope_freqs.shape)  # shape (1, 1, seq, head_dim/2)
+    x_rotated_complex = x_complex * rope_freqs_complex  # multiplication complexe
+    x_rotated = torch.view_as_real(x_rotated_complex).reshape(*x.shape)
+    return x_rotated.to(x.dtype)  # reconvertir au dtype d'entree
