@@ -29,7 +29,8 @@ def swiglu(x: torch.Tensor) -> torch.Tensor:
        torch.nn.functional.silu, mais tu peux aussi l'ecrire a la main
        pour bien voir la formule).
     """
-    raise NotImplementedError
+    gate, value = x.chunk(2, dim=-1)
+    return torch.nn.functional.silu(gate) * value
 
 
 class XIELU(nn.Module):
@@ -43,27 +44,32 @@ class XIELU(nn.Module):
     -> activation -> une matmul), pas sur le schema "deux projections"
     de SwiGLU.
 
-    Formule (piecewise, avec alpha_p, alpha_n, beta entrainables,
-    contraints positifs via softplus pour eviter des gradients qui
-    explosent) :
+    Formule exacte, Eq. 9 du papier (verifiee sur arxiv.org/abs/2411.13010,
+    version HTML) :
 
-        xIELU(x) = alpha_p * x^2 + beta * x                si x > 0
-                 = alpha_n * (exp(min(x, 0)) - 1 - x) + beta * x   si x <= 0
+        xIELU(x) = alpha_p * x^2 + 0.5 * x                  si x > 0
+                 = alpha_n * (exp(x) - 1 - x) + 0.5 * x     si x <= 0
 
-    Relire https://arxiv.org/abs/2411.13010 (section derivation, eq. de
-    xIELU) avant d'implementer pour verifier cette formule au mot pres --
-    c'est le genre de detail ou une erreur de signe change tout le
-    comportement du gradient.
+    avec :
+        alpha_p = softplus(alpha_p_raw)          -- garantit alpha_p > 0
+        alpha_n = 0.5 + softplus(alpha_n_raw)    -- garantit alpha_n > 0.5
+
+    beta_p = beta_n = 0.5 sont des CONSTANTES fixes (pas entrainables,
+    contrairement a ce qu'on pourrait deviner) -- seuls alpha_p_raw et
+    alpha_n_raw sont des nn.Parameter, un scalaire chacun.
     """
 
     def __init__(self) -> None:
         super().__init__()
-        # TODO: parametres entrainables alpha_p, alpha_n, beta (des
-        # scalaires nn.Parameter suffisent pour une premiere version).
-        # Astuce : parametrer via une variable "brute" passee dans
-        # softplus() au forward, pour garantir alpha_p, alpha_n > 0
-        # sans avoir a clip apres chaque step d'optimiseur.
-        raise NotImplementedError
+        # TODO: deux scalaires nn.Parameter, alpha_p_raw et alpha_n_raw
+        # (valeur initiale : torch.zeros(1) ou torch.tensor(0.0) suffit,
+        # softplus(0) = ln(2) ~ 0.69, un point de depart raisonnable).
+        # Ce sont des tenseurs "bruts" -- alpha_p/alpha_n eux-memes sont
+        # calcules a la volee dans forward() via softplus(), jamais
+        # stockes directement (sinon rien n'empecherait l'optimiseur de
+        # les rendre negatifs).
+        self.alpha_p_raw = nn.Parameter(torch.zeros(1))
+        self.alpha_n_raw = nn.Parameter(torch.zeros(1))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -72,5 +78,26 @@ class XIELU(nn.Module):
 
         TODO: implementer la formule piecewise ci-dessus avec
         torch.where(x > 0, branche_positive, branche_negative).
+
+        Piege numerique : torch.where calcule TOUJOURS ses deux branches
+        pour tous les elements avant de choisir (pas de court-circuit).
+        Si la branche negative utilise exp(x) tel quel, alors pour les
+        elements ou x est grand et positif (donc la branche negative sera
+        de toute facon jetee), exp(x) peut deborder (overflow -> inf).
+        Au forward ce n'est pas grave (torch.where jette cette valeur),
+        mais au backward, le gradient de exp(x) a cet endroit vaut aussi
+        inf, multiplie par un gradient-amont de 0 (puisque cette branche
+        n'est pas selectionnee) -> 0 * inf = NaN, qui contamine ensuite
+        tout le gradient de alpha_n_raw (somme sur tous les elements).
+        Fix : calculer exp(x.clamp(max=0)) au lieu de exp(x) dans la
+        branche negative -- ca ne change rien pour x <= 0 (clamp(max=0)
+        ne fait rien), et ca empeche l'overflow/NaN pour les x > 0 qui de
+        toute facon ne seront jamais choisis par le where.
         """
-        raise NotImplementedError
+        alpha_p = torch.nn.functional.softplus(self.alpha_p_raw)
+        alpha_n = 0.5 + torch.nn.functional.softplus(self.alpha_n_raw)
+
+        positive_branch = alpha_p * x.pow(2) + 0.5 * x
+        negative_branch = alpha_n * (torch.exp(x.clamp(max=0)) - 1 - x) + 0.5 * x
+
+        return torch.where(x > 0, positive_branch, negative_branch)

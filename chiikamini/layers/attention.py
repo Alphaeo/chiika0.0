@@ -73,7 +73,40 @@ class Attention(nn.Module):
         Attention si dispo) -- interessant pour les vitesses d'inference
         une fois la version "manuelle" validee par les tests.
         """
-        raise NotImplementedError
+        batch, seq, _ = x.shape
+
+        # 1. Projeter x en q, k, v
+        q = self.wq(x)  # (batch, seq, n_heads * head_dim)
+        k = self.wk(x)  # (batch, seq, n_kv_heads * head_dim)
+        v = self.wv(x)  # (batch, seq, n_kv_heads * head_dim)
+
+        # 2. Reshape et transpose
+        q = q.view(batch, seq, self.n_heads, self.head_dim).transpose(1, 2)  # (batch, n_heads, seq, head_dim)
+        k = k.view(batch, seq, self.n_kv_heads, self.head_dim).transpose(1, 2)  # (batch, n_kv_heads, seq, head_dim)
+        v = v.view(batch, seq, self.n_kv_heads, self.head_dim).transpose(1, 2)  # (batch, n_kv_heads, seq, head_dim)
+
+        if self.qk_norm is not None:
+            q, k = self.qk_norm(q, k)
+
+        q = apply_rotary_emb(q, rope_freqs)
+        k = apply_rotary_emb(k, rope_freqs)
+
+        # 5. GQA : repetition de k et v
+        k = k.repeat_interleave(self.n_rep, dim=1)  # (batch, n_heads, seq, head_dim)
+        v = v.repeat_interleave(self.n_rep, dim=1)  # (batch, n_heads, seq, head_dim)
+
+        # 6. Attention : calcul des scores
+        scores = q @ k.transpose(-2, -1) / (self.head_dim ** 0.5)
+        if self.causal:
+            mask = torch.triu(torch.ones(seq, seq), diagonal=1).to(scores.device)
+            scores = scores.masked_fill(mask == 1, float('-inf'))
+
+        # 7. Softmax et application a v
+        attn = scores.softmax(dim=-1) @ v
+
+        # 8. Transpose + reshape
+        attn = attn.transpose(1, 2).contiguous().view(batch, seq, -1)
+        return self.wo(attn)
 
 
 class MultiHeadLatentAttention(nn.Module):

@@ -22,7 +22,15 @@ class FeedForward(nn.Module):
         # - si "xielu": couche lineaire dim -> hidden_dim, une instance
         #   de XIELU(), puis couche lineaire hidden_dim -> dim. Meme
         #   schema qu'un FFN classique (pas de gate ici).
-        raise NotImplementedError
+        
+        if activation == "swiglu":
+            self.proj_in = nn.Linear(dim, 2 * hidden_dim, bias=False)
+            self.proj_out = nn.Linear(hidden_dim, dim, bias=False)
+        elif activation == "xielu":
+            self.proj_in = nn.Linear(dim, hidden_dim, bias=False)
+            self.activation_layer = XIELU()
+            self.proj_out = nn.Linear(hidden_dim, dim, bias=False)
+
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -32,4 +40,12 @@ class FeedForward(nn.Module):
         TODO: brancher les couches definies dans __init__, en passant
         par `swiglu()` ou l'instance XIELU selon self.activation.
         """
-        raise NotImplementedError
+        if self.activation == "swiglu":
+            x = self.proj_in(x)
+            x = swiglu(x)
+            x = self.proj_out(x)
+        elif self.activation == "xielu":
+            x = self.proj_in(x)
+            x = self.activation_layer(x)
+            x = self.proj_out(x)
+        return x
