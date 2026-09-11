@@ -32,7 +32,10 @@ class TransformerBlock(nn.Module):
         # - self.attn = Attention(dim, n_heads, n_kv_heads, norm_eps, use_qk_norm, causal)
         # - self.ffn_norm = RMSNorm(dim, eps=norm_eps)
         # - self.ffn = FeedForward(dim, ffn_hidden_dim, ffn_activation)
-        raise NotImplementedError
+        self.attn_norm = RMSNorm(dim, eps=norm_eps)
+        self.attn = Attention(dim, n_heads, n_kv_heads, norm_eps, use_qk_norm, causal)
+        self.ffn_norm = RMSNorm(dim, eps=norm_eps)
+        self.ffn = FeedForward(dim, ffn_hidden_dim, ffn_activation)
 
     def forward(self, x: torch.Tensor, rope_freqs: torch.Tensor) -> torch.Tensor:
         """
@@ -48,4 +51,6 @@ class TransformerBlock(nn.Module):
         (Note l'ordre : norm PUIS sous-couche, et le residuel se fait
         sur x d'ORIGINE, pas sur la sortie normee -- c'est ca, "pre-norm".)
         """
-        raise NotImplementedError
+        x = x + self.attn(self.attn_norm(x), rope_freqs)
+        x = x + self.ffn(self.ffn_norm(x))
+        return x
