@@ -37,7 +37,10 @@ class ChiikaMiniTrunk(nn.Module):
         # - self.register_buffer("rope_freqs",
         #     precompute_rope_freqs(cfg.head_dim, cfg.max_seq_len, cfg.rope_theta),
         #     persistent=False)
-        raise NotImplementedError
+        self.embed_tokens = nn.Embedding(cfg.vocab_size, cfg.dim)
+        self.blocks = nn.ModuleList([TransformerBlock(dim = cfg.dim, n_heads = cfg.n_heads, n_kv_heads = cfg.n_kv_heads, ffn_hidden_dim = cfg.ffn_hidden_dim, norm_eps = cfg.norm_eps, use_qk_norm = cfg.use_qk_norm, ffn_activation = cfg.ffn_activation, causal = True) for _ in range(cfg.n_layers)])
+        self.norm = RMSNorm(cfg.dim, eps = cfg.norm_eps)
+        self.register_buffer("rope_freqs", precompute_rope_freqs(cfg.head_dim, cfg.max_seq_len, cfg.rope_theta), persistent = False)
 
     def forward(self, inputs_embeds: torch.Tensor) -> torch.Tensor:
         """
@@ -57,12 +60,16 @@ class ChiikaMiniTrunk(nn.Module):
         4. for block in self.blocks: x = block(x, rope_freqs)
         5. return self.norm(x)
         """
-        raise NotImplementedError
+        seq_len = inputs_embeds.shape[1]
+        rope_freqs = self.rope_freqs[:seq_len]
+        x = inputs_embeds
+        for block in self.blocks:
+            x = block(x, rope_freqs)
+        return self.norm(x)
 
     def token_embeddings(self, input_ids: torch.Tensor) -> torch.Tensor:
         """TODO: return self.embed_tokens(input_ids) -- (batch, seq) -> (batch, seq, dim)."""
-        raise NotImplementedError
-
+        return self.embed_tokens(input_ids)
 
 class ChiikaMiniForCausalLM(nn.Module):
     def __init__(self, cfg: TextConfig) -> None:
@@ -77,7 +84,10 @@ class ChiikaMiniForCausalLM(nn.Module):
         #   partagent les memes poids, cf. Press & Wolf 2016 ; divise
         #   le nombre de parametres du vocabulaire par deux, souvent
         #   sans perte de qualite voire un gain sur petits modeles).
-        raise NotImplementedError
+        self.lm_head = nn.Linear(cfg.dim, cfg.vocab_size, bias = False)
+        if cfg.tie_embeddings:
+            self.lm_head.weight = self.trunk.embed_tokens.weight
+            
 
     def forward(self, input_ids: torch.Tensor, labels: torch.Tensor | None = None):
         """
@@ -104,7 +114,17 @@ class ChiikaMiniForCausalLM(nn.Module):
              )
         6. return logits, loss
         """
-        raise NotImplementedError
+        embeds = self.trunk.token_embeddings(input_ids)
+        hidden = self.trunk(embeds)
+        logits = self.lm_head(hidden)
+        loss = None
+        if labels is not None:
+            loss = torch.nn.functional.cross_entropy(
+                logits.reshape(-1, logits.size(-1)),
+                labels.reshape(-1),
+                ignore_index=-100,
+            )
+        return logits, loss
 
 
 class ChiikaMiniVLM(nn.Module):
