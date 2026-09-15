@@ -6,6 +6,7 @@ prevu pour tourner sur un seul CPU/GPU de dev.
 """
 
 import torch
+import math
 from torch.utils.data import DataLoader
 
 from chiikamini.utils import count_parameters, get_device, set_seed
@@ -29,7 +30,13 @@ def train_step(model: torch.nn.Module, batch, optimizer: torch.optim.Optimizer, 
     5. optimizer.step()
     6. return loss.item()
     """
-    raise NotImplementedError
+    optimizer.zero_grad()
+    input_ids, labels = batch
+    logits, loss = model(input_ids, labels=labels)
+    loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+    optimizer.step()
+    return loss.item()
 
 
 def make_lr_scheduler(optimizer: torch.optim.Optimizer, warmup_steps: int, total_steps: int):
@@ -43,7 +50,13 @@ def make_lr_scheduler(optimizer: torch.optim.Optimizer, warmup_steps: int, total
     (formule cosine standard : 0.5 * (1 + cos(pi * progress)), avec
     progress = (step - warmup_steps) / (total_steps - warmup_steps))
     """
-    raise NotImplementedError
+    def lr_lambda(step):
+        if step < warmup_steps:
+            return step / warmup_steps
+        else:
+            progress = (step - warmup_steps) / (total_steps - warmup_steps)
+            return 0.5 * (1 + math.cos(torch.tensor(progress * 3.141592653589793)))
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
 
 def train_loop(
@@ -73,4 +86,18 @@ def train_loop(
        - scheduler.step()
        - logguer la loss (ex: tous les 10 steps)
     """
-    raise NotImplementedError
+    set_seed(seed)
+    device = get_device()
+    model.to(device)
+    print(f"parametres entrainables: {count_parameters(model):,}")
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.1)
+    total_steps = n_epochs * len(loader)
+    scheduler = make_lr_scheduler(optimizer, warmup_steps, total_steps)
+    for epoch in range(n_epochs):
+        for step, batch in enumerate(loader):
+            batch = [item.to(device) for item in batch]
+            loss = train_step(model, batch, optimizer)
+            if step % 10 == 0:
+                print(f"Epoch {epoch}, Step {step}, Loss: {loss:.4f}")
+            scheduler.step()
