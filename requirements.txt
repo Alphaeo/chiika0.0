@@ -4,3 +4,5 @@ Pillow
 numpy
 pytest
 tqdm
+safetensors
+huggingface_hub

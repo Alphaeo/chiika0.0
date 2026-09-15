@@ -1,0 +1,1624 @@
+Computer science notes
+
+Big-O notation describes how the running time or memory usage of an
+algorithm grows as the size of its input grows. It ignores constant
+factors and lower-order terms, focusing only on the dominant term for
+large inputs. An algorithm that runs in O(1) time takes the same amount
+of time regardless of input size. An algorithm that runs in O(log n)
+time, like binary search, gets only slightly slower as the input
+doubles. An algorithm that runs in O(n) time, like a single pass over
+an array, scales linearly with input size. An algorithm that runs in
+O(n log n) time, like merge sort or quicksort on average, scales a bit
+worse than linear but much better than quadratic. An algorithm that
+runs in O(n^2) time, like a naive nested loop comparing every pair of
+elements, becomes impractical for large inputs.
+
+Arrays store elements in contiguous memory, so accessing any element by
+index takes O(1) time. Inserting or removing an element in the middle
+of an array takes O(n) time because every following element must shift.
+Linked lists store elements as nodes connected by pointers, so
+inserting or removing a node takes O(1) time once you have a reference
+to it, but accessing an arbitrary element takes O(n) time because you
+must walk the list from the head.
+
+A stack is a last-in-first-out structure: the last element pushed is
+the first one popped. Stacks are used to implement function call
+frames, undo history, and depth-first search. A queue is a
+first-in-first-out structure: the first element pushed is the first one
+popped. Queues are used to implement task scheduling and breadth-first
+search.
+
+A binary search tree keeps every node's left subtree smaller and right
+subtree larger, so searching, inserting, and deleting all take O(log n)
+time on average, but O(n) time in the worst case if the tree becomes
+unbalanced, for example when inserting already sorted data. Balanced
+trees like AVL trees and red-black trees restore the O(log n) guarantee
+by rebalancing after every insertion or deletion.
+
+A hash table maps keys to values using a hash function that converts a
+key into an array index. Lookup, insertion, and deletion all take O(1)
+time on average. Collisions happen when two different keys hash to the
+same index; common strategies to resolve them are chaining, where each
+array slot holds a small list of entries, and open addressing, where
+the table probes for the next free slot.
+
+Sorting algorithms illustrate different trade-offs. Bubble sort
+repeatedly swaps adjacent out-of-order elements and runs in O(n^2)
+time. Merge sort splits the array in half, recursively sorts each half,
+and merges the two sorted halves back together in O(n log n) time,
+using extra memory proportional to the input size. Quicksort picks a
+pivot element, partitions the array so smaller elements come before
+the pivot and larger elements come after, and recursively sorts each
+partition; its average case is O(n log n) but its worst case is O(n^2)
+if the pivot is chosen poorly. Heapsort builds a binary heap and
+repeatedly extracts the maximum element, running in O(n log n) time
+with no extra memory beyond the array itself.
+
+Graph traversal explores the nodes and edges of a graph. Depth-first
+search goes as deep as possible along each branch before backtracking,
+typically implemented with a stack or recursion. Breadth-first search
+explores all neighbors at the current depth before moving deeper,
+typically implemented with a queue. Dijkstra's algorithm finds the
+shortest path from a source node to every other node in a graph with
+non-negative edge weights, using a priority queue to always expand the
+closest unvisited node next.
+
+Dynamic programming solves a problem by breaking it into overlapping
+subproblems and storing the result of each subproblem so it is never
+recomputed. The classic example is computing Fibonacci numbers: a naive
+recursive implementation recomputes the same values exponentially many
+times, while a dynamic programming implementation stores each computed
+value in a table and reuses it, reducing the running time from
+exponential to linear.
+
+A neural network is a function made of layers, where each layer applies
+a linear transformation followed by a non-linear activation function.
+Without the non-linearity, stacking layers would collapse into a single
+linear transformation no matter how many layers were stacked, so the
+network could never learn anything more complex than a linear model.
+Common activation functions include ReLU, which outputs zero for
+negative inputs and the input itself for positive inputs, and sigmoid,
+which squashes any input into the range between zero and one.
+
+Gradient descent trains a neural network by repeatedly computing the
+gradient of a loss function with respect to every parameter, then
+nudging each parameter a small step in the direction that reduces the
+loss. The size of that step is called the learning rate. If the
+learning rate is too large, training can diverge and the loss can
+explode. If the learning rate is too small, training converges very
+slowly. Backpropagation is the algorithm that computes these gradients
+efficiently, by applying the chain rule of calculus backward through
+the network, layer by layer, reusing intermediate results instead of
+recomputing them from scratch for every parameter.
+
+The attention mechanism lets a model weigh the importance of different
+positions in a sequence when producing a representation for a given
+position. Each token is projected into a query, a key, and a value. The
+dot product between a query and a key measures how relevant that key is
+to the query, and the softmax of all these dot products produces a set
+of weights that sum to one. Multiplying the values by these weights and
+summing them produces the output for that position, so each token's
+output representation becomes a weighted average of the value vectors
+of every token it attends to, with more weight given to more relevant
+tokens.
+
+A tokenizer converts raw text into a sequence of integers that a neural
+network can process, because a network operates on numbers, not
+characters. A common approach is byte pair encoding, which starts from
+individual characters and repeatedly merges the most frequent adjacent
+pair into a new token, building up a vocabulary of common subwords.
+This lets rare words be split into smaller known pieces while common
+words are kept as a single token, giving a good balance between
+vocabulary size and sequence length.
+
+
+# --- include/chiikaml/matrix.hpp (cpp) ---
+
+```cpp
+#pragma once
+
+#include <cstddef>
+#include <iostream>
+#include <string>
+#include <vector>
+
+namespace chiikaml {
+
+// Matrice dense de doubles, stockee de maniere contigue en memoire
+// (row-major : la ligne i, colonne j est a l'indice i * cols_ + j).
+//
+// Pourquoi pas std::vector<std::vector<double>> ?
+// -> Ce serait un vecteur de vecteurs : chaque ligne est allouee
+//    separement, dispersee dans le tas. Mauvais pour le cache CPU.
+//    Un seul bloc contigu est beaucoup plus rapide a parcourir.
+class Matrix {
+public:
+    // Construit une matrice rows x cols, initialisee a 0.0.
+    Matrix(std::size_t rows, std::size_t cols);
+
+    // Definies directement dans la classe (donc implicitement
+    // `inline`) plutot que dans matrix.cpp : ce sont des accesseurs
+    // triviaux, appeles dans les boucles chaudes de tous les autres
+    // modules (KNNClassifier, KDTree, KMeans, RandomForest...).
+    // Si elles vivaient dans matrix.cpp, le compilateur ne pourrait
+    // pas "voir a travers" l'appel depuis un autre fichier .cpp
+    // (une autre unite de compilation) -- il devrait supposer par
+    // prudence qu'elles peuvent modifier n'importe quoi en memoire,
+    // ce qui bloque l'auto-vectorisation des boucles qui les
+    // appellent. Verifie empiriquement avec `-fopt-info-vec-all` :
+    // avant ce changement, GCC refusait de vectoriser la boucle de
+    // KNNClassifier::squared_distance() pour exactement cette raison.
+    std::size_t rows() const { return rows_; }
+    std::size_t cols() const { return cols_; }
+
+    // Accès lecture/écriture à l'élément (row, col).
+    double& operator()(std::size_t row, std::size_t col) { return data_[row * cols_ + col]; }
+    double operator()(std::size_t row, std::size_t col) const { return data_[row * cols_ + col]; }
+
+    // Addition élément par élément. Les deux matrices doivent avoir
+    // les mêmes dimensions.
+    Matrix operator+(const Matrix& other) const;
+
+    // Produit matriciel. Le nombre de colonnes de la matrice de gauche
+    // doit être égal au nombre de lignes de la matrice de droite.
+    Matrix operator*(const Matrix& other) const;
+
+    // Element-wise subtraction. Both matrices must have the same dimensions.
+    Matrix operator-(const Matrix& other) const;
+
+    // Scalar multiplication and division.
+    Matrix operator*(double scalar) const;
+    Matrix operator/(double scalar) const;
+
+    // In-place element-wise addition and subtraction.
+    Matrix& operator+=(const Matrix& other);
+    Matrix& operator-=(const Matrix& other);
+
+    // In-place scalar multiplication.
+    Matrix& operator*=(double scalar);
+
+    // Change les dimensions vers rows x cols. Les valeurs existantes
+    // dans la zone commune aux anciennes et nouvelles dimensions
+    // (min(rows(), rows) x min(cols(), cols)) sont préservées, à la
+    // bonne case (row, col) dans les deux cas. Toute case
+    // nouvellement créée (agrandissement) vaut 0.0. Toute case en
+    // dehors des nouvelles dimensions (rétrécissement) est perdue.
+    //
+    // Attention : contrairement à std::vector::resize, on ne peut pas
+    // se contenter de redimensionner data_ tel quel -- le stockage
+    // est row-major avec un "pas" (le nombre de colonnes) qui change
+    // potentiellement lui aussi. Il faut donc reconstruire un nouveau
+    // buffer et recopier case par case, en utilisant l'ANCIEN pas
+    // (cols()) pour lire dans l'ancien buffer et le NOUVEAU pas
+    // (cols, le paramètre) pour écrire dans le nouveau.
+    void resize(std::size_t rows, std::size_t cols);
+
+    // Charge une matrice depuis un fichier CSV : une ligne de texte
+    // = une ligne de la matrice, des valeurs numeriques separees par
+    // des virgules. Pas d'en-tete de colonnes suppose -- toutes les
+    // lignes du fichier doivent etre numeriques. Leve
+    // std::runtime_error si le fichier ne peut pas etre ouvert,
+    // std::invalid_argument si les lignes n'ont pas toutes le meme
+    // nombre de colonnes.
+    //
+    // static : pas besoin d'une Matrix deja existante pour appeler
+    // ca -- on l'appelle directement sur la classe, comme
+    // Matrix::from_csv("data.csv"), pas m.from_csv(...).
+    static Matrix from_csv(const std::string& path);
+
+    // Calcule le determinant de la matrice. Leve std::invalid_argument si la matrice n'est pas carree.
+    // Calcule le determinant par decomposition LU avec pivot partiel.
+    // La matrice doit etre carree.
+    double det() const;
+
+    // Calcule l'inverse de la matrice via la décomposition LU. Leve std::invalid_argument si la matrice n'est pas carree.
+    // Leve std::runtime_error si la matrice a un determinant nul.
+    // Ne nécessite pas de calculer le determinant avant.
+    Matrix inv() const;
+
+    // Calcule la transposée de la matrice.
+    Matrix transpose() const;
+
+    // Resout le systeme lineaire Ax = b, ou A est la matrice courante.
+    // Leve std::invalid_argument si la matrice n'est pas carree ou si le nombre de lignes de b ne correspond pas.
+    // Préferable à Matrix x = a.inv() * b; car évite de calculer toute l’inverse donc plus efficace.
+    Matrix solve(const Matrix& b) const;
+
+    // Resout le systeme lineaire Ax = b, ou A est la matrice courante, en utilisant la decomposition de Cholesky.
+    // Leve std::invalid_argument si la matrice n'est pas carree ou si le nombre de lignes de b ne correspond pas.
+    // Leve std::runtime_error si A n'est pas definie positive.
+    // Préferable quand A est symetrique definie positive, car plus efficace que la decomposition LU.
+    // A utiliser pour les problemes de regression lineaire, ou A = X^T * X.
+
+    Matrix solve_cholesky(const Matrix& b) const;
+
+
+
+private:
+    std::size_t rows_;
+    std::size_t cols_;
+    std::vector<double> data_;
+};
+
+std::ostream& operator<<(std::ostream& os, const Matrix& m);
+
+// Scalar multiplication from the left: scalar * matrix.
+Matrix operator*(double scalar, const Matrix& matrix);
+} // namespace chiikaml
+
+```
+
+
+# --- include/chiikaml/knn.hpp (cpp) ---
+
+```cpp
+#pragma once
+
+#include <cstddef>
+#include <vector>
+#include <algorithm>
+
+#include "chiikaml/matrix.hpp"
+
+namespace chiikaml {
+
+// Classifieur k plus proches voisins (k-NN), version brute-force :
+// pour predire un point, on calcule sa distance a *tous* les points
+// d'entrainement, on garde les k plus proches, et on vote a la
+// majorite parmi leurs labels.
+//
+// Complexite d'une prediction : O(n_train * n_features) pour les
+// distances, puis O(n_train log k) pour trouver les k plus proches.
+// Pas de structure d'index (ca viendra avec le KD-Tree en phase 3) :
+// c'est volontairement la version "naive" de reference, celle a
+// laquelle on comparera les futures optimisations.
+class KNNClassifier {
+public:
+    // k = nombre de voisins consideres pour le vote. Doit etre >= 1.
+    explicit KNNClassifier(std::size_t k);
+
+    // Memorise le jeu d'entrainement. X : une ligne par echantillon,
+    // une colonne par feature. y : un label entier par ligne de X.
+    // X.rows() doit etre egal a y.size().
+    void fit(const Matrix& X, std::vector<int> y);
+
+    // Predit un label pour chaque ligne de X (chaque ligne = un point
+    // a classer). Doit etre appelee apres fit().
+    std::vector<int> predict(const Matrix& X) const;
+
+private:
+    std::size_t k_;
+    Matrix X_train_;
+    std::vector<int> y_train_;
+
+    // Distance euclidienne au carre entre la ligne `query_row` de
+    // `query` et la ligne `train_row` de X_train_.
+    // (Au carre : pour comparer/trier des distances, pas besoin de
+    // sqrt() qui est monotone et coute plus cher pour rien.)
+    double squared_distance(const Matrix& query, std::size_t query_row,
+                             std::size_t train_row) const;
+
+    // Predit le label d'une seule ligne (query_row) de `query`.
+    int predict_one(const Matrix& query, std::size_t query_row) const;
+};
+
+} // namespace chiikaml
+
+```
+
+
+# --- src/knn.cpp (cpp) ---
+
+```cpp
+#include "chiikaml/knn.hpp"
+
+#include <stdexcept>
+#include <unordered_map>
+#include <algorithm>
+
+namespace chiikaml {
+
+// Remarque : Matrix n'a pas de constructeur par defaut (il faut
+// toujours donner rows/cols), donc X_train_ doit etre initialise
+// explicitement ici, meme si fit() n'a pas encore ete appele.
+// (0, 0) = une matrice vide, en attendant fit().
+KNNClassifier::KNNClassifier(std::size_t k)
+    : k_(k), X_train_(0, 0) {
+}
+
+// TODO(toi):
+// - verifie que X.rows() == y.size() (sinon throw std::invalid_argument)
+// - stocke X dans X_train_ et y (deplace ou copie) dans y_train_
+void KNNClassifier::fit(const Matrix& X, std::vector<int> y) {
+    
+    if (X.rows() != y.size()) {
+        throw std::invalid_argument("X.rows() must be equal to y.size()");
+    }
+    X_train_ = X;
+    y_train_ = std::move(y);
+}
+
+// TODO(toi): pour chaque ligne de X, appelle predict_one et empile
+// le resultat dans un vector<int> a retourner.
+std::vector<int> KNNClassifier::predict(const Matrix& X) const {
+    std::vector<int> predictions;
+    predictions.reserve(X.rows());
+    for (std::size_t i=0; i<X.rows(); ++i) {
+        predictions.push_back(predict_one(X,i));
+    }
+    return predictions;
+}
+
+// TODO(toi): somme des carres des differences entre
+// query(query_row, f) et X_train_(train_row, f) pour chaque feature f.
+double KNNClassifier::squared_distance(const Matrix& query, std::size_t query_row,
+                                        std::size_t train_row) const {
+    double squared_distance = 0;
+    for (std::size_t f=0; f<X_train_.cols(); ++f){
+        double diff = query(query_row, f) - X_train_(train_row, f);
+        squared_distance += diff * diff;
+    }
+    return squared_distance;
+}
+
+// TODO(toi):
+// - calcule la distance entre `query_row` et chaque ligne de X_train_
+// - trouve les k plus proches (regarde std::partial_sort ou std::nth_element)
+// - vote a la majorite parmi leurs labels (regarde std::unordered_map<int, int>)
+int KNNClassifier::predict_one(const Matrix& query, std::size_t query_row) const {
+    std::vector<std::pair<size_t, double>> distances;
+    for(std::size_t i=0; i<X_train_.rows(); ++i){
+        double dist = squared_distance(query, query_row, i);
+        distances.push_back({i, dist});
+    }
+    std::nth_element(distances.begin(), distances.begin() + k_, distances.end(),
+    [](const std::pair<std::size_t, double>& a, const std::pair<std::size_t, double>& b){
+        return a.second<b.second;
+    });
+
+    std::unordered_map<int, int> label_count;
+    for (std::size_t i=0; i<k_; ++i){
+        int label = y_train_[distances[i].first];
+        label_count[label]++;
+    }
+
+    int majority_label = -1;
+    int max_count = 0;
+
+    for (const auto& pair : label_count){
+        if (pair.second>max_count){
+            max_count = pair.second;
+            majority_label = pair.first;
+        }
+    }
+
+    return majority_label; ;
+}
+
+} // namespace chiikaml
+
+```
+
+
+# --- include/chiikaml/kdtree.hpp (cpp) ---
+
+```cpp
+#pragma once
+
+#include <cstddef>
+#include <memory>
+#include <vector>
+
+#include "chiikaml/matrix.hpp"
+
+namespace chiikaml {
+
+// Index spatial pour accelerer la recherche des k plus proches
+// voisins, comparee a l'approche brute-force de KNNClassifier qui
+// compare a *tous* les points d'entrainement a chaque requete
+// (O(n)). Un KD-Tree partitionne l'espace recursivement (en
+// alternant la dimension de decoupe a chaque niveau), ce qui permet
+// d'elaguer des branches entieres de la recherche sans les visiter.
+// Complexite moyenne d'une requete : O(log n) au lieu de O(n) --
+// mais ca depend fortement du nombre de dimensions (le fameau
+// "fleau de la dimension" : au-dela d'une grosse dizaine de
+// dimensions, l'elagage devient inefficace et on retombe pres du
+// brute-force).
+//
+// Volontairement independant de KNNClassifier : KDTree ne connait
+// que la geometrie (des points, des indices), pas les labels. Le
+// lien entre les deux (utiliser KDTree comme "backend" rapide pour
+// KNNClassifier) sera fait dans une etape ulterieure.
+class KDTree {
+public:
+    // Construit l'index a partir de tous les points de `points`
+    // (une ligne = un point). La construction reorganise les points
+    // en arbre une bonne fois pour toutes ; les requetes ulterieures
+    // n'ont plus besoin de reparcourir tout le jeu de donnees.
+    explicit KDTree(const Matrix& points);
+
+    // Renvoie les indices (dans `points`, celle passee au
+    // constructeur) des k plus proches voisins de la ligne
+    // `query_row` de `query`, tries du plus proche au plus loin.
+    std::vector<std::size_t> nearest_neighbors(const Matrix& query, std::size_t query_row,
+                                                std::size_t k) const;
+
+private:
+    // Un noeud de l'arbre : un point de reference (son indice dans
+    // points_), la dimension selon laquelle ce noeud "coupe"
+    // l'espace en deux (alternee a chaque niveau de profondeur), et
+    // ses deux sous-arbres. unique_ptr : chaque noeud est possede
+    // par exactement un parent (ou par KDTree pour la racine) --
+    // quand le parent est detruit, ses enfants le sont
+    // automatiquement, recursivement, sans fuite memoire et sans
+    // gestion manuelle de delete.
+    struct Node {
+        std::size_t point_index;
+        std::size_t split_dim;
+        std::unique_ptr<Node> left;
+        std::unique_ptr<Node> right;
+
+        Node(std::size_t point_index_, std::size_t split_dim_)
+            : point_index(point_index_), split_dim(split_dim_) {}
+    };
+
+    Matrix points_;
+    std::unique_ptr<Node> root_;
+
+    // Construit recursivement le sous-arbre couvrant
+    // indices[lo, hi) (borne haute exclue), a la profondeur `depth`
+    // (qui determine la dimension de decoupe : depth % points_.cols()).
+    // Partitionne `indices` sur place (nth_element) : c'est pour ca
+    // que `indices` est une reference non-const.
+    std::unique_ptr<Node> build(std::vector<std::size_t>& indices, std::size_t lo, std::size_t hi,
+                                 std::size_t depth);
+
+    // Parcourt recursivement le sous-arbre `node`, en maintenant
+    // dans `best` les k meilleurs candidats trouves jusqu'ici
+    // (tries par distance croissante). Modifie `best` en place.
+    void search(const Node* node, const Matrix& query, std::size_t query_row, std::size_t k,
+                std::vector<std::pair<double, std::size_t>>& best) const;
+
+    double squared_distance(const Matrix& query, std::size_t query_row,
+                             std::size_t point_index) const;
+};
+
+} // namespace chiikaml
+
+```
+
+
+# --- src/kdtree.cpp (cpp) ---
+
+```cpp
+#include "chiikaml/kdtree.hpp"
+
+#include <algorithm>
+#include <stdexcept>
+
+namespace chiikaml {
+
+// TODO(toi):
+// - construit un vector<size_t> indices = {0, 1, ..., points.rows()-1}
+// - stocke points dans points_
+// - appelle build(indices, 0, indices.size(), 0) et stocke le
+//   resultat dans root_
+KDTree::KDTree(const Matrix& points)
+    : points_(0, 0) {
+    std::vector<std::size_t> indices(points.rows());
+    for (std::size_t i=0; i<points.rows(); ++i) {
+        indices[i] = i;
+    }
+    points_ = points;
+    root_ = build(indices, 0, indices.size(), 0);
+}
+
+// TODO(toi), etape par etape :
+// - cas de base : si lo == hi, il n'y a rien a construire, renvoie
+//   un unique_ptr<Node> vide (nullptr implicite -- un unique_ptr par
+//   defaut ne possede rien)
+// - split_dim = depth % points_.cols()
+// - mid = lo + (hi - lo) / 2
+// - std::nth_element sur indices[lo, hi) autour de indices[mid],
+//   avec un comparateur qui compare points_(a, split_dim) et
+//   points_(b, split_dim) pour deux indices a, b
+// - cree le noeud : auto node = std::make_unique<Node>(indices[mid], split_dim);
+// - node->left  = build(indices, lo, mid, depth + 1);
+// - node->right = build(indices, mid + 1, hi, depth + 1);
+// - renvoie node (un unique_ptr se deplace automatiquement au retour,
+//   pas besoin de std::move ici)
+std::unique_ptr<KDTree::Node> KDTree::build(std::vector<std::size_t>& indices, std::size_t lo,
+                                             std::size_t hi, std::size_t depth) {
+    if (lo >= hi) {
+        return nullptr;
+    }
+    std::size_t split_dim = depth % points_.cols();
+    std::size_t mid = lo + (hi - lo) / 2;
+    std::nth_element(indices.begin() + lo, indices.begin() + mid, indices.begin() + hi,
+                     [&split_dim, this](std::size_t a, std::size_t b) {
+                         return points_(a, split_dim) < points_(b, split_dim);
+                     });
+    auto node = std::make_unique<Node>(indices[mid], split_dim);
+    node->left = build(indices, lo, mid, depth + 1);
+    node->right = build(indices, mid + 1, hi, depth + 1);
+    return node;
+}
+
+// TODO(toi), etape par etape :
+// - si node == nullptr, rien a faire, return
+// - calcule dist = squared_distance(query, query_row, node->point_index)
+// - insere (dist, node->point_index) dans `best` a la bonne position
+//   pour garder `best` trie par distance croissante, puis si
+//   best.size() > k, retire le dernier (le plus mauvais)
+//   (regarde std::lower_bound pour trouver la position d'insertion,
+//   ou fais-le "a la main" avec une boucle -- les deux sont valides)
+// - diff = query(query_row, node->split_dim) - points_(node->point_index, node->split_dim)
+// - decide quel sous-arbre visiter en premier selon le signe de diff
+//   (si diff < 0, le point requete est du cote "left" de la coupe)
+// - visite ce sous-arbre en premier (appel recursif a search)
+// - elagage : ne visite l'AUTRE sous-arbre que si best.size() < k,
+//   OU si diff * diff < best.back().first (la pire distance
+//   actuellement gardee) -- sinon cette branche ne peut
+//   mathematiquement contenir aucun point plus proche que ce qu'on
+//   a deja trouve, pas la peine de la visiter
+void KDTree::search(const Node* node, const Matrix& query, std::size_t query_row, std::size_t k,
+                     std::vector<std::pair<double, std::size_t>>& best) const {
+    if (node == nullptr){
+        return;
+    }
+    double dist = squared_distance(query, query_row, node->point_index);
+    auto it = std::lower_bound(best.begin(), best.end(), std::make_pair(dist, node->point_index),
+                               [](const std::pair<double, std::size_t>& a,
+                                  const std::pair<double, std::size_t>& b) {
+                                   return a.first < b.first;
+                               });
+    best.insert(it, std::make_pair(dist, node->point_index));
+    if (best.size() > k) {
+        best.pop_back();
+    }
+    double diff = query(query_row, node->split_dim) - points_(node->point_index, node->split_dim);
+    if (diff < 0) {
+    search(node->left.get(), query, query_row, k, best);
+    if (best.size() < k || diff * diff < best.back().first) {
+        search(node->right.get(), query, query_row, k, best);  // l'AUTRE côté
+        }
+    } else {
+        search(node->right.get(), query, query_row, k, best);
+    if (best.size() < k || diff * diff < best.back().first) {
+        search(node->left.get(), query, query_row, k, best);   // l'AUTRE côté
+        }
+    }
+    return;
+}
+
+// TODO(toi): identique a KNNClassifier::squared_distance, mais par
+// rapport a points_ au lieu de X_train_.
+double KDTree::squared_distance(const Matrix& query, std::size_t query_row,
+                                 std::size_t point_index) const {
+    double squared_distance = 0;
+    for (std::size_t f=0; f<points_.cols(); ++f){
+        double diff = query(query_row, f) - points_(point_index, f);
+        squared_distance += diff * diff;
+    }
+    return squared_distance;
+}
+
+// TODO(toi):
+// - best : vector<pair<double,size_t>> vide
+// - appelle search(root_.get(), query, query_row, k, best)
+// - construit et renvoie un vector<size_t> a partir des .second de
+//   `best` (qui est deja trie par distance croissante)
+std::vector<std::size_t> KDTree::nearest_neighbors(const Matrix& query, std::size_t query_row,
+                                                     std::size_t k) const {
+    std::vector<std::pair<double, std::size_t>> best;
+    search(root_.get(), query, query_row, k, best);
+    std::vector<std::size_t> indices;
+    indices.reserve(best.size());
+    for (const auto& pair : best) {
+        indices.push_back(pair.second);
+    }
+    return indices;
+}
+
+} // namespace chiikaml
+
+```
+
+
+# --- src/kmeans.cpp (cpp) ---
+
+```cpp
+#include "chiikaml/kmeans.hpp"
+
+#include <algorithm>
+#include <numeric>
+#include <stdexcept>
+
+namespace chiikaml {
+
+// TODO(toi):
+// - stocke n_clusters et max_iterations
+// - construit rng_ a partir de seed (regarde le constructeur de
+//   std::mt19937)
+// - centroids_ : pas encore de vraies valeurs disponibles (X n'est
+//   pas encore connu) -- comme pour X_train_/points_ avant, il faut
+//   quand meme l'initialiser a quelque chose dans la liste
+//   d'initialisation
+KMeans::KMeans(std::size_t n_clusters, std::size_t max_iterations, unsigned int seed)
+    : centroids_(0, 0) {
+    max_iterations_ = max_iterations;
+    n_clusters_ = n_clusters;
+    rng_ = std::mt19937(seed);
+    centroids_ = Matrix(n_clusters_, 0);
+}
+
+// TODO(toi): identique au squared_distance des modules precedents,
+// mais entre deux points qui peuvent venir de deux matrices
+// differentes (a et b). a.cols() et b.cols() doivent etre egaux
+// (pas verifie ici pour rester simple, mais garde-le en tete).
+double KMeans::squared_distance(const Matrix& a, std::size_t row_a, const Matrix& b,
+                                 std::size_t row_b) {
+    double squared_distance = 0;
+    if (a.cols() != b.cols()) {
+        throw std::invalid_argument("Matrices a et b doivent avoir le meme nombre de colonnes");
+    }
+    for (std::size_t j = 0; j < a.cols(); ++j) {
+        double diff = a(row_a, j) - b(row_b, j);
+        squared_distance += diff * diff;
+    }
+    return squared_distance;
+}
+
+// TODO(toi): calcule squared_distance entre la ligne `row` de
+// `points` et chaque ligne de centroids_ (n_clusters_ d'entre
+// elles), renvoie l'indice de la plus proche.
+std::size_t KMeans::nearest_centroid(const Matrix& points, std::size_t row) const {
+    std::size_t nearest_index = 0;
+    double min_distance = squared_distance(points, row, centroids_, 0);
+    for (std::size_t i = 1; i < n_clusters_; ++i){
+        double distance = squared_distance(points, row, centroids_, i);
+        if (distance < min_distance) {
+            min_distance = distance;
+            nearest_index = i;
+        }
+    }
+    return nearest_index;
+}
+
+// TODO(toi), etape par etape :
+//
+// 1) Initialisation des centres :
+//    - construit un vector<size_t> indices = {0, 1, ..., X.rows()-1}
+//      (regarde std::iota)
+//    - tire n_clusters_ indices distincts au sort parmi eux, avec
+//      rng_ (regarde std::sample -- il ecrit son resultat via un
+//      iterateur de sortie, par exemple std::back_inserter sur un
+//      vector<size_t> vide au depart)
+//    - centroids_ = Matrix(n_clusters_, X.cols()), et pour chaque
+//      centre i, copie la ligne indices_tires[i] de X dedans
+//    - labels_ : vector<size_t> de taille X.rows(), rempli de 0
+//
+// 2) Boucle principale, jusqu'a max_iterations_ fois :
+//    a) affectation : pour chaque ligne i de X, calcule
+//       nearest_centroid(X, i). Si different de labels_[i], met a
+//       jour labels_[i] et note que "quelque chose a change" ce tour
+//    b) mise a jour : recalcule chaque centre comme la moyenne des
+//       points qui lui sont actuellement assignes (parcours X une
+//       fois, accumule une somme par cluster + un compteur de
+//       points par cluster, puis divise) -- attention a la division
+//       par zero si un cluster n'a recupere aucun point (cas limite,
+//       pas teste pour l'instant, mais bon reflexe d'y penser)
+//    c) si rien n'a change a l'etape (a), la solution a converge :
+//       sors de la boucle avant d'atteindre max_iterations_
+void KMeans::fit(const Matrix& X) {
+    std::vector<std::size_t> indices(X.rows());
+    std::iota(indices.begin(), indices.end(), 0);
+    std::vector<std::size_t> sampled_indices;
+    std::sample(indices.begin(), indices.end(), std::back_inserter(sampled_indices), n_clusters_, rng_);
+    centroids_.resize(n_clusters_, X.cols());
+
+    for (std::size_t i = 0; i < n_clusters_; ++i) {
+        for(std::size_t j = 0; j < X.cols(); ++j) {
+            centroids_(i, j) = X(sampled_indices[i], j);
+        }
+    }
+
+    std::vector<std::size_t> new_labels(X.rows(), 0);
+    labels_.resize(X.rows(), 0);
+
+    for (std::size_t iteration = 0; iteration < max_iterations_; ++iteration){
+        bool changed = false;
+        for (std::size_t i = 0; i < X.rows(); ++i){
+            new_labels[i] = nearest_centroid(X, i);
+            if (new_labels[i] != labels_[i]) {
+                labels_[i] = new_labels[i];
+                changed = true;
+            }
+        }
+        if (!changed) {
+            break;
+        }
+        Matrix sums(n_clusters_, X.cols());
+        std::vector<std::size_t> counts(n_clusters_, 0);
+        for (std::size_t i = 0; i < X.rows(); ++i) {
+            std::size_t cluster = labels_[i];
+            for (std::size_t j = 0; j < X.cols(); ++j) {
+                sums(cluster, j) += X(i, j);
+            }
+        }
+        for (std::size_t i = 0; i < n_clusters_; ++i) {
+            counts[i] = std::count(labels_.begin(), labels_.end(), i);
+            if (counts[i] > 0) {
+                for (std::size_t j = 0; j < X.cols(); ++j) {
+                    centroids_(i, j) = sums(i, j) / counts[i];
+                }
+            }
+        }
+    }
+
+}
+
+// TODO(toi): pour chaque ligne de X, appelle nearest_centroid et
+// empile le resultat -- tres proche de KNNClassifier::predict().
+std::vector<std::size_t> KMeans::predict(const Matrix& X) const {
+    std::vector<std::size_t> predictions(X.rows());
+    for (std::size_t i = 0; i < X.rows(); ++i) {
+        predictions[i] = nearest_centroid(X, i);
+    }
+    return predictions;
+}
+
+const std::vector<std::size_t>& KMeans::labels() const {
+    return labels_;
+}
+
+const Matrix& KMeans::centroids() const {
+    return centroids_;
+}
+
+} // namespace chiikaml
+
+```
+
+
+# --- include/chiikaml/decision_tree.hpp (cpp) ---
+
+```cpp
+#pragma once
+
+#include <cstddef>
+#include <memory>
+#include <unordered_map>
+#include <vector>
+
+#include "chiikaml/matrix.hpp"
+
+namespace chiikaml {
+
+// Arbre de decision de classification (CART : Classification And
+// Regression Tree), construit par decoupes binaires recursives.
+//
+// A chaque noeud interne, on choisit UNE feature et UN seuil qui
+// separent les points en deux groupes (X(feature) <= seuil a
+// gauche, X(feature) > seuil a droite) de maniere a rendre chaque
+// groupe le plus "pur" possible -- c'est-a-dire dominé par une
+// seule classe. On mesure l'impurete d'un groupe avec l'indice de
+// Gini :
+//
+//   gini(y) = 1 - somme_c (p_c)^2
+//
+// ou p_c est la proportion de la classe c dans y. gini = 0 quand le
+// groupe est parfaitement pur (une seule classe), et augmente vers
+// 1 quand les classes sont melangees. Pour choisir un split, on
+// teste plusieurs (feature, seuil) candidats et on garde celui qui
+// minimise la moyenne ponderee des gini des deux groupes resultants
+// (ponderee par leur taille respective).
+//
+// La recursion s'arrete (le noeud devient une feuille, qui predit
+// la classe majoritaire du groupe qui y arrive) quand :
+//  - le groupe est deja pur (gini == 0), ou
+//  - la profondeur max (max_depth_) est atteinte, ou
+//  - le groupe est trop petit pour continuer a le diviser
+//    (min_samples_split_), ou
+//  - aucun split ne separe mieux les points (ex : toutes les
+//    valeurs identiques sur toutes les features).
+//
+// Choix de simplification volontaire pour cette premiere version :
+// chaque appel recursif travaille sur une COPIE du sous-ensemble de
+// points qui lui revient (un sous-Matrix/sous-vector<int>), plutot
+// que sur des indices dans un tableau partage (comme KDTree::build
+// le faisait avec nth_element). C'est moins efficace (copies), mais
+// beaucoup plus simple a lire et raisonner -- optimisable plus tard
+// (Phase 7).
+class DecisionTreeClassifier {
+public:
+    explicit DecisionTreeClassifier(std::size_t max_depth = 5, std::size_t min_samples_split = 2);
+
+    // Entraine l'arbre sur (X, y). Une ligne de X = un point, une
+    // entree de y = son label.
+    void fit(const Matrix& X, std::vector<int> y);
+
+    // Predit un label pour chaque ligne de X. Doit etre appelee
+    // apres fit().
+    std::vector<int> predict(const Matrix& X) const;
+
+private:
+    struct Node {
+        // Un noeud est soit une feuille (is_leaf == true), soit un
+        // noeud de decision interne. Design volontairement simple
+        // (un seul struct avec un indicateur), plutot que deux types
+        // distincts lies par heritage/polymorphisme -- une
+        // alternative valable a explorer plus tard si besoin.
+        bool is_leaf = true;
+
+        // Valide seulement si is_leaf == true.
+        int predicted_class = 0;
+
+        // Valides seulement si is_leaf == false.
+        std::size_t split_feature = 0;
+        double split_threshold = 0.0;
+        std::unique_ptr<Node> left;   // X(split_feature) <= split_threshold
+        std::unique_ptr<Node> right;  // X(split_feature) >  split_threshold
+    };
+
+    std::size_t max_depth_;
+    std::size_t min_samples_split_;
+    std::unique_ptr<Node> root_;
+
+    // Construit recursivement le sous-arbre pour le sous-ensemble
+    // (X, y) deja filtre pour ce noeud, a la profondeur `depth`
+    // (0 = racine).
+    std::unique_ptr<Node> build(const Matrix& X, const std::vector<int>& y, std::size_t depth) const;
+
+    // Impurete de Gini de l'ensemble de labels y. Ne depend d'aucun
+    // etat de l'arbre -- static, comme KMeans::squared_distance.
+    static double gini(const std::vector<int>& y);
+
+    // Meme formule que gini(), mais a partir de comptes de classes
+    // DEJA calcules (pas d'un vector<int> a rescanner). Utilisee par
+    // find_best_split(), qui maintient ces comptes au fur et a mesure
+    // au lieu de les recalculer a chaque candidat -- voir son
+    // commentaire pour le detail.
+    static double gini_from_counts(const std::unordered_map<int, std::size_t>& counts, std::size_t total);
+
+    // La classe la plus frequente dans y (utilisee pour la
+    // prediction d'une feuille).
+    static int majority_class(const std::vector<int>& y);
+
+    // Cherche, parmi toutes les features de X et tous les seuils
+    // candidats, le split qui minimise l'impurete ponderee des deux
+    // groupes resultants. Ecrit le resultat dans
+    // best_feature/best_threshold ; renvoie false si aucun split
+    // valide n'a ete trouve (ex: toutes les valeurs identiques).
+    //
+    // Version triee : O(n log n) par feature plutot que O(n^2). Pour
+    // chaque feature, trie les points par valeur croissante, puis
+    // balaie cet ordre de gauche a droite en deplacant un point a la
+    // fois du groupe "droite" vers le groupe "gauche", en mettant a
+    // jour des comptes de classes de proche en proche (O(1) par
+    // point deplace) plutot que de tout recompter a chaque seuil
+    // candidat (ce que faisait la version precedente, O(n) par
+    // candidat).
+    static bool find_best_split(const Matrix& X, const std::vector<int>& y, std::size_t& best_feature,
+                                 double& best_threshold);
+
+    int predict_one(const Matrix& X, std::size_t row) const;
+};
+
+} // namespace chiikaml
+
+```
+
+
+# --- chiikamini/layers/norm.py (python) ---
+
+```python
+"""RMSNorm (Zhang & Sennrich, 2019) et QK-Norm (Qwen3).
+Voir PAPERS.md section "Normalisation" pour le detail.
+"""
+
+import torch
+from torch import nn
+
+
+class RMSNorm(nn.Module):
+    """RMSNorm : normalise par la racine de la moyenne des carres, sans
+    recentrer (contrairement a LayerNorm qui soustrait la moyenne).
+
+    Formule : y = x / sqrt(mean(x**2, dim=-1) + eps) * weight
+
+    `weight` est un parametre appris de shape (dim,), initialise a 1.
+    """
+
+    def __init__(self, dim: int, eps: float = 1e-6) -> None:
+        super().__init__()
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(dim))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        x: (..., dim)
+        return: (..., dim), meme shape/dtype que x.
+
+        TODO:
+        1. Calculer la RMS sur la derniere dimension (garder la dim avec
+           keepdim=True pour le broadcasting).
+        2. Diviser x par (rms + eps) -- attention, additionner eps
+           *avant* la racine carree ou apres, choisis une convention et
+           reste coherent avec le test (`tests/test_shapes.py`).
+        3. Multiplier par `self.weight`.
+
+        Piege frequent : fais le calcul de variance en float32 meme si x
+        est en float16/bfloat16 (x.float()), puis reconverti a la fin --
+        RMSNorm est numeriquement fragile en basse precision.
+        """
+        RMS = torch.sqrt(torch.mean(x.float() ** 2, dim=-1, keepdim=True) + self.eps)
+        return (x / RMS) * self.weight
+
+
+class QKNorm(nn.Module):
+    """QK-Norm (Qwen3) : normalise Q et K independamment, par tete,
+    avant le produit scalaire d'attention. Stabilise l'entrainement
+    quand on retire le biais QKV. C'est juste une RMSNorm appliquee sur
+    la derniere dimension (head_dim) de Q et de K separement -- pas de
+    nouvelle formule, reutilise `RMSNorm` en interne.
+    """
+
+    def __init__(self, head_dim: int, eps: float = 1e-6) -> None:
+        super().__init__()
+        self.q_norm = RMSNorm(head_dim, eps=eps)
+        self.k_norm = RMSNorm(head_dim, eps=eps)
+
+    def forward(self, q: torch.Tensor, k: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        q: (batch, n_heads, seq, head_dim)
+        k: (batch, n_kv_heads, seq, head_dim)
+        return: (q_normed, k_normed), memes shapes.
+
+        TODO: appliquer self.q_norm sur q et self.k_norm sur k (la RMSNorm
+        agit deja sur la derniere dimension, donc rien de special a faire
+        pour le multi-tete -- juste appeler les deux sous-modules).
+        """
+        q_normed = self.q_norm(q)
+        k_normed = self.k_norm(k)
+        return q_normed, k_normed
+
+```
+
+
+# --- chiikamini/layers/rope.py (python) ---
+
+```python
+"""Rotary Position Embeddings (Su et al., 2021, RoFormer).
+Voir PAPERS.md section "Position".
+
+Idee generale : on regroupe les dimensions de Q/K par paires (x1, x2),
+(x3, x4), ... et on fait tourner chaque paire dans le plan 2D d'un angle
+qui depend de la position du token et de l'indice de la paire. Une
+rotation ne change pas la norme du vecteur -- c'est une propriete a
+verifier dans les tests.
+"""
+
+import torch
+
+
+def precompute_rope_freqs(head_dim: int, max_seq_len: int, theta: float = 10000.0) -> torch.Tensor:
+    """Precalcule les angles de rotation pour toutes les positions et
+    toutes les paires de dimensions.
+
+    return: tensor complexe (ou tensor reel (max_seq_len, head_dim/2, 2)
+    si tu preferes eviter torch.complex) contenant, pour chaque position
+    `pos` et chaque paire d'indice `i` (i in [0, head_dim/2)) :
+        angle = pos / (theta ** (2*i / head_dim))
+    stocke sous forme (cos(angle), sin(angle)) ou cis(angle) = e^{i*angle}.
+
+    TODO:
+    1. freqs_i = 1.0 / (theta ** (arange(0, head_dim, 2) / head_dim))  -- shape (head_dim/2,)
+    2. positions = arange(max_seq_len)  -- shape (max_seq_len,)
+    3. angles = outer(positions, freqs_i)  -- shape (max_seq_len, head_dim/2)
+    4. Retourner torch.polar(torch.ones_like(angles), angles) (forme
+       complexe, pratique pour l'etape suivante) -- ou (cos(angles), sin(angles))
+       si tu evites les tensors complexes.
+    """
+    freqs_i = 1.0 / (theta ** (torch.arange(0, head_dim, 2) / head_dim))  # shape (head_dim/2,)
+    positions = torch.arange(max_seq_len)  # shape (max_seq_len,)
+    angles = torch.outer(positions, freqs_i)  # shape (max_seq_len, head_dim/2)
+    return torch.polar(torch.ones_like(angles), angles)  # forme complexe
+
+
+def apply_rotary_emb(x: torch.Tensor, rope_freqs: torch.Tensor) -> torch.Tensor:
+    """Applique la rotation RoPE a Q ou K.
+
+    x: (batch, n_heads, seq, head_dim) -- reel
+    rope_freqs: sortie de `precompute_rope_freqs`, tronquee a `seq`
+                (shape (seq, head_dim/2))
+    return: (batch, n_heads, seq, head_dim), meme shape que x, norme
+            de chaque vecteur de tete inchangee par rapport a x.
+
+    TODO (approche avec nombres complexes, la plus courte a ecrire) :
+    1. Reinterpreter x comme des paires (x1, x2), (x3, x4), ... =
+       x.reshape(*x.shape[:-1], -1, 2), puis les voir comme des
+       nombres complexes x1 + i*x2 (torch.view_as_complex, attention
+       au dtype: il faut un tensor contigu de dtype float mappable en
+       complex64, donc x.float() avant).
+    2. Multiplier terme a terme par rope_freqs[:seq] (broadcast sur
+       batch et n_heads) -- une multiplication complexe = une rotation.
+    3. Repasser en reel (torch.view_as_real) et reshape a la shape
+       d'origine (..., head_dim). Reconvertir au dtype d'entree.
+
+    Test attendu : ||apply_rotary_emb(x, freqs)|| == ||x|| (a epsilon
+    pres) pour chaque vecteur de tete -- une rotation preserve la norme.
+    """
+    x_complex = torch.view_as_complex(x.float().reshape(*x.shape[:-1],-1,2))  # shape (batch, n_heads, seq, head_dim/2)
+    rope_freqs_complex = rope_freqs.reshape(1,1,*rope_freqs.shape)  # shape (1, 1, seq, head_dim/2)
+    x_rotated_complex = x_complex * rope_freqs_complex  # multiplication complexe
+    x_rotated = torch.view_as_real(x_rotated_complex).reshape(*x.shape)
+    return x_rotated.to(x.dtype)  # reconvertir au dtype d'entree
+
+```
+
+
+# --- chiikamini/layers/attention.py (python) ---
+
+```python
+"""Self-attention avec Grouped Query Attention (GQA), RoPE et QK-Norm
+optionnelle. Voir PAPERS.md sections "Attention" et "Position".
+
+Un seul module `Attention` sert pour le decoder texte (causal=True) et
+l'encodeur vision (causal=False) -- seul le masque change.
+"""
+
+import torch
+from torch import nn
+
+from chiikamini.layers.norm import QKNorm
+from chiikamini.layers.rope import apply_rotary_emb
+
+
+class Attention(nn.Module):
+    def __init__(
+        self,
+        dim: int,
+        n_heads: int,
+        n_kv_heads: int,
+        norm_eps: float = 1e-6,
+        use_qk_norm: bool = True,
+        causal: bool = True,
+    ) -> None:
+        super().__init__()
+        assert n_heads % n_kv_heads == 0
+        self.n_heads = n_heads
+        self.n_kv_heads = n_kv_heads
+        self.n_rep = n_heads // n_kv_heads   # combien de tetes Q partagent chaque tete KV
+        self.head_dim = dim // n_heads
+        self.causal = causal
+
+        # TODO: projections lineaires, SANS biais (cf. Qwen3 -- le
+        # biais QKV est retire au profit de QK-Norm pour la stabilite).
+        # - wq : dim -> n_heads * head_dim
+        # - wk, wv : dim -> n_kv_heads * head_dim
+        # - wo : n_heads * head_dim -> dim (projection de sortie)
+        self.wq = nn.Linear(dim, n_heads * self.head_dim, bias=False)
+        self.wk = nn.Linear(dim, n_kv_heads * self.head_dim, bias=False)
+        self.wv = nn.Linear(dim, n_kv_heads * self.head_dim, bias=False)
+        self.wo = nn.Linear(n_heads * self.head_dim, dim, bias=False)
+
+        self.qk_norm = QKNorm(self.head_dim, eps=norm_eps) if use_qk_norm else None
+
+    def forward(self, x: torch.Tensor, rope_freqs: torch.Tensor) -> torch.Tensor:
+        """
+        x: (batch, seq, dim)
+        rope_freqs: sortie de `precompute_rope_freqs`, tronquee a `seq`
+        return: (batch, seq, dim)
+
+        TODO, dans l'ordre :
+        1. Projeter x en q, k, v avec wq/wk/wv.
+        2. Reshape en (batch, seq, n_heads_ou_n_kv_heads, head_dim) puis
+           transpose en (batch, n_heads_ou_n_kv_heads, seq, head_dim).
+        3. Si self.qk_norm is not None: appliquer QKNorm a (q, k).
+        4. Appliquer apply_rotary_emb a q et k (PAS a v -- RoPE encode
+           la position pour le produit scalaire Q.K, v n'en a pas besoin).
+        5. GQA : repeter k et v `self.n_rep` fois sur la dimension des
+           tetes pour matcher n_heads (torch.repeat_interleave sur la
+           dim des tetes, ou k.unsqueeze + expand + reshape -- les deux
+           marchent, repeat_interleave est plus lisible).
+        6. Attention : scores = q @ k.transpose(-2, -1) / sqrt(head_dim).
+           Si self.causal: appliquer un masque triangulaire superieur a
+           -inf avant le softmax (un token ne voit pas le futur).
+           Sinon (encodeur vision) : pas de masque, attention complete.
+        7. softmax(scores, dim=-1) @ v -> (batch, n_heads, seq, head_dim).
+        8. Transpose + reshape pour revenir a (batch, seq, dim), puis
+           projeter avec wo.
+
+        Note perf (optionnelle, a faire une fois que ca marche) :
+        `torch.nn.functional.scaled_dot_product_attention` fait les
+        etapes 6-7 en un seul appel, avec un kernel fusionne (Flash
+        Attention si dispo) -- interessant pour les vitesses d'inference
+        une fois la version "manuelle" validee par les tests.
+        """
+        batch, seq, _ = x.shape
+
+        # 1. Projeter x en q, k, v
+        q = self.wq(x)  # (batch, seq, n_heads * head_dim)
+        k = self.wk(x)  # (batch, seq, n_kv_heads * head_dim)
+        v = self.wv(x)  # (batch, seq, n_kv_heads * head_dim)
+
+        # 2. Reshape et transpose
+        q = q.view(batch, seq, self.n_heads, self.head_dim).transpose(1, 2)  # (batch, n_heads, seq, head_dim)
+        k = k.view(batch, seq, self.n_kv_heads, self.head_dim).transpose(1, 2)  # (batch, n_kv_heads, seq, head_dim)
+        v = v.view(batch, seq, self.n_kv_heads, self.head_dim).transpose(1, 2)  # (batch, n_kv_heads, seq, head_dim)
+
+        if self.qk_norm is not None:
+            q, k = self.qk_norm(q, k)
+
+        q = apply_rotary_emb(q, rope_freqs)
+        k = apply_rotary_emb(k, rope_freqs)
+
+        # 5. GQA : repetition de k et v
+        k = k.repeat_interleave(self.n_rep, dim=1)  # (batch, n_heads, seq, head_dim)
+        v = v.repeat_interleave(self.n_rep, dim=1)  # (batch, n_heads, seq, head_dim)
+
+        # 6. Attention : calcul des scores
+        scores = q @ k.transpose(-2, -1) / (self.head_dim ** 0.5)
+        if self.causal:
+            mask = torch.triu(torch.ones(seq, seq), diagonal=1).to(scores.device)
+            scores = scores.masked_fill(mask == 1, float('-inf'))
+
+        # 7. Softmax et application a v
+        attn = scores.softmax(dim=-1) @ v
+
+        # 8. Transpose + reshape
+        attn = attn.transpose(1, 2).contiguous().view(batch, seq, -1)
+        return self.wo(attn)
+
+
+class MultiHeadLatentAttention(nn.Module):
+    """Multi-head Latent Attention (DeepSeek-V2, 2024) -- voir PAPERS.md,
+    section "Attention" (optionnel). Compresse K et V dans un vecteur
+    latent de rang faible avant mise en cache, au lieu de garder les
+    K/V complets par tete comme GQA. Interessant pour reduire le
+    KV-cache si tu pousses `generate.py` vers des sequences longues,
+    mais PAS necessaire pour la v1 du modele -- phase 2, une fois que
+    `Attention` (GQA) tourne et passe les tests.
+
+    Non demarre : pas de TODO detaille ici tant que la version GQA
+    n'est pas validee. Si tu veux t'y attaquer, relire la section 2.1
+    ("Multi-Head Latent Attention") de https://arxiv.org/abs/2405.04434
+    d'abord.
+    """
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__()
+        raise NotImplementedError("Phase 2 -- voir docstring de la classe.")
+
+```
+
+
+# --- chiikamini/layers/activations.py (python) ---
+
+```python
+"""Activations pour le FFN. Deux options, choisies via
+`TextConfig.ffn_activation` :
+
+- "swiglu" : standard Llama/Qwen, cf. Shazeer 2020.
+- "xielu"  : experimentale, cf. Huang et al. 2024 (EPFL/ETHZ).
+
+Voir PAPERS.md section "Feed-forward / activations" pour le detail et
+les liens.
+"""
+
+import torch
+from torch import nn
+
+
+def swiglu(x: torch.Tensor) -> torch.Tensor:
+    """SwiGLU applique a une projection deja faite.
+
+    x: (..., 2 * hidden_dim) -- concatenation de deux projections
+       lineaires de l'entree (le "gate" et la "valeur"), calculees en
+       amont dans `layers/mlp.py` (une seule matmul plus large, coupee
+       en deux ici, plutot que deux matmuls separees).
+    return: (..., hidden_dim)
+
+    TODO:
+    1. Couper x en deux moities egales sur la derniere dimension :
+       gate, value = x.chunk(2, dim=-1)
+    2. Retourner F.silu(gate) * value
+       (SiLU(z) = z * sigmoid(z), aussi appele Swish -- disponible en
+       torch.nn.functional.silu, mais tu peux aussi l'ecrire a la main
+       pour bien voir la formule).
+    """
+    gate, value = x.chunk(2, dim=-1)
+    return torch.nn.functional.silu(gate) * value
+
+
+class XIELU(nn.Module):
+    """xIELU (Huang et al., 2024) -- activation entrainable derivee en
+    integrant des proprietes de gradient desirees plutot qu'en bricolant
+    une formule a la main (approche "gradient-first"). Contrairement a
+    SwiGLU, ce n'est PAS un mecanisme de porte (gate) sur deux
+    projections : c'est une non-linearite element-wise appliquee a une
+    seule projection, comme ReLU ou GELU. A brancher dans
+    `layers/mlp.py` sur le meme schema qu'un FFN classique (une matmul
+    -> activation -> une matmul), pas sur le schema "deux projections"
+    de SwiGLU.
+
+    Formule exacte, Eq. 9 du papier (verifiee sur arxiv.org/abs/2411.13010,
+    version HTML) :
+
+        xIELU(x) = alpha_p * x^2 + 0.5 * x                  si x > 0
+                 = alpha_n * (exp(x) - 1 - x) + 0.5 * x     si x <= 0
+
+    avec :
+        alpha_p = softplus(alpha_p_raw)          -- garantit alpha_p > 0
+        alpha_n = 0.5 + softplus(alpha_n_raw)    -- garantit alpha_n > 0.5
+
+    beta_p = beta_n = 0.5 sont des CONSTANTES fixes (pas entrainables,
+    contrairement a ce qu'on pourrait deviner) -- seuls alpha_p_raw et
+    alpha_n_raw sont des nn.Parameter, un scalaire chacun.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        # TODO: deux scalaires nn.Parameter, alpha_p_raw et alpha_n_raw
+        # (valeur initiale : torch.zeros(1) ou torch.tensor(0.0) suffit,
+        # softplus(0) = ln(2) ~ 0.69, un point de depart raisonnable).
+        # Ce sont des tenseurs "bruts" -- alpha_p/alpha_n eux-memes sont
+        # calcules a la volee dans forward() via softplus(), jamais
+        # stockes directement (sinon rien n'empecherait l'optimiseur de
+        # les rendre negatifs).
+        self.alpha_p_raw = nn.Parameter(torch.zeros(1))
+        self.alpha_n_raw = nn.Parameter(torch.zeros(1))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        x: (..., hidden_dim)
+        return: (..., hidden_dim), meme shape.
+
+        TODO: implementer la formule piecewise ci-dessus avec
+        torch.where(x > 0, branche_positive, branche_negative).
+
+        Piege numerique : torch.where calcule TOUJOURS ses deux branches
+        pour tous les elements avant de choisir (pas de court-circuit).
+        Si la branche negative utilise exp(x) tel quel, alors pour les
+        elements ou x est grand et positif (donc la branche negative sera
+        de toute facon jetee), exp(x) peut deborder (overflow -> inf).
+        Au forward ce n'est pas grave (torch.where jette cette valeur),
+        mais au backward, le gradient de exp(x) a cet endroit vaut aussi
+        inf, multiplie par un gradient-amont de 0 (puisque cette branche
+        n'est pas selectionnee) -> 0 * inf = NaN, qui contamine ensuite
+        tout le gradient de alpha_n_raw (somme sur tous les elements).
+        Fix : calculer exp(x.clamp(max=0)) au lieu de exp(x) dans la
+        branche negative -- ca ne change rien pour x <= 0 (clamp(max=0)
+        ne fait rien), et ca empeche l'overflow/NaN pour les x > 0 qui de
+        toute facon ne seront jamais choisis par le where.
+        """
+        alpha_p = torch.nn.functional.softplus(self.alpha_p_raw)
+        alpha_n = 0.5 + torch.nn.functional.softplus(self.alpha_n_raw)
+
+        positive_branch = alpha_p * x.pow(2) + 0.5 * x
+        negative_branch = alpha_n * (torch.exp(x.clamp(max=0)) - 1 - x) + 0.5 * x
+
+        return torch.where(x > 0, positive_branch, negative_branch)
+
+```
+
+
+# --- chiikamini/layers/mlp.py (python) ---
+
+```python
+"""Feed-forward du bloc Transformer. Deux variantes selon
+`ffn_activation` ("swiglu" ou "xielu"), voir layers/activations.py et
+PAPERS.md.
+"""
+
+import torch
+from torch import nn
+
+from chiikamini.layers.activations import XIELU, swiglu
+
+
+class FeedForward(nn.Module):
+    def __init__(self, dim: int, hidden_dim: int, activation: str = "swiglu") -> None:
+        super().__init__()
+        assert activation in ("swiglu", "xielu")
+        self.activation = activation
+
+        # TODO:
+        # - si "swiglu": une seule couche lineaire dim -> 2*hidden_dim
+        #   (le chunk en deux se fait dans `swiglu()`), sans biais, puis
+        #   une couche lineaire hidden_dim -> dim en sortie, sans biais.
+        # - si "xielu": couche lineaire dim -> hidden_dim, une instance
+        #   de XIELU(), puis couche lineaire hidden_dim -> dim. Meme
+        #   schema qu'un FFN classique (pas de gate ici).
+        
+        if activation == "swiglu":
+            self.proj_in = nn.Linear(dim, 2 * hidden_dim, bias=False)
+            self.proj_out = nn.Linear(hidden_dim, dim, bias=False)
+        elif activation == "xielu":
+            self.proj_in = nn.Linear(dim, hidden_dim, bias=False)
+            self.activation_layer = XIELU()
+            self.proj_out = nn.Linear(hidden_dim, dim, bias=False)
+
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        x: (batch, seq, dim)
+        return: (batch, seq, dim)
+
+        TODO: brancher les couches definies dans __init__, en passant
+        par `swiglu()` ou l'instance XIELU selon self.activation.
+        """
+        if self.activation == "swiglu":
+            x = self.proj_in(x)
+            x = swiglu(x)
+            x = self.proj_out(x)
+        elif self.activation == "xielu":
+            x = self.proj_in(x)
+            x = self.activation_layer(x)
+            x = self.proj_out(x)
+        return x
+
+```
+
+
+# --- chiikamini/layers/block.py (python) ---
+
+```python
+"""Bloc Transformer pre-norm : residual + norm + attention, puis
+residual + norm + FFN. "Pre-norm" (norme avant la sous-couche, pas
+apres) est le choix standard post-GPT-2 -- stabilise l'entrainement de
+modeles profonds en gardant un chemin residuel "propre" (sans norme
+dessus), cf. discussions autour de Llama/Qwen si tu veux creuser le
+pourquoi.
+"""
+
+import torch
+from torch import nn
+
+from chiikamini.layers.attention import Attention
+from chiikamini.layers.mlp import FeedForward
+from chiikamini.layers.norm import RMSNorm
+
+
+class TransformerBlock(nn.Module):
+    def __init__(
+        self,
+        dim: int,
+        n_heads: int,
+        n_kv_heads: int,
+        ffn_hidden_dim: int,
+        norm_eps: float = 1e-6,
+        use_qk_norm: bool = True,
+        ffn_activation: str = "swiglu",
+        causal: bool = True,
+    ) -> None:
+        super().__init__()
+        # TODO: instancier
+        # - self.attn_norm = RMSNorm(dim, eps=norm_eps)
+        # - self.attn = Attention(dim, n_heads, n_kv_heads, norm_eps, use_qk_norm, causal)
+        # - self.ffn_norm = RMSNorm(dim, eps=norm_eps)
+        # - self.ffn = FeedForward(dim, ffn_hidden_dim, ffn_activation)
+        self.attn_norm = RMSNorm(dim, eps=norm_eps)
+        self.attn = Attention(dim, n_heads, n_kv_heads, norm_eps, use_qk_norm, causal)
+        self.ffn_norm = RMSNorm(dim, eps=norm_eps)
+        self.ffn = FeedForward(dim, ffn_hidden_dim, ffn_activation)
+
+    def forward(self, x: torch.Tensor, rope_freqs: torch.Tensor) -> torch.Tensor:
+        """
+        x: (batch, seq, dim)
+        rope_freqs: passe tel quel a Attention
+        return: (batch, seq, dim)
+
+        TODO:
+            x = x + self.attn(self.attn_norm(x), rope_freqs)
+            x = x + self.ffn(self.ffn_norm(x))
+            return x
+
+        (Note l'ordre : norm PUIS sous-couche, et le residuel se fait
+        sur x d'ORIGINE, pas sur la sortie normee -- c'est ca, "pre-norm".)
+        """
+        x = x + self.attn(self.attn_norm(x), rope_freqs)
+        x = x + self.ffn(self.ffn_norm(x))
+        return x
+
+```
+
+
+# --- chiikamini/model.py (python) ---
+
+```python
+"""Assemblage final. Trois classes :
+
+- `ChiikaMiniTrunk` : le decoder texte seul (embedding + blocks + norme
+  finale), sans tete de sortie -- reutilise tel quel par les deux
+  classes suivantes.
+- `ChiikaMiniForCausalLM` : trunk + tete lineaire vers le vocabulaire +
+  perte cross-entropy. Modele texte-only.
+- `ChiikaMiniVLM` : ChiikaMiniForCausalLM + VisionEncoder + VisionProjector.
+  Remplace les embeddings des tokens `<image>` par les embeddings de
+  patches projetes (cf. LLaVA, PAPERS.md) avant de passer dans le trunk.
+"""
+
+import torch
+from torch import nn
+
+from chiikamini.config import ChiikaMiniConfig, TextConfig
+from chiikamini.layers.block import TransformerBlock
+from chiikamini.layers.norm import RMSNorm
+from chiikamini.layers.rope import precompute_rope_freqs
+from chiikamini.vision.projector import VisionProjector
+from chiikamini.vision.vision_encoder import VisionEncoder
+
+
+class ChiikaMiniTrunk(nn.Module):
+    def __init__(self, cfg: TextConfig) -> None:
+        super().__init__()
+        self.cfg = cfg
+
+        # TODO:
+        # - self.embed_tokens = nn.Embedding(cfg.vocab_size, cfg.dim)
+        # - self.blocks = nn.ModuleList([TransformerBlock(dim=cfg.dim,
+        #     n_heads=cfg.n_heads, n_kv_heads=cfg.n_kv_heads,
+        #     ffn_hidden_dim=cfg.ffn_hidden_dim, norm_eps=cfg.norm_eps,
+        #     use_qk_norm=cfg.use_qk_norm, ffn_activation=cfg.ffn_activation,
+        #     causal=True) for _ in range(cfg.n_layers)])
+        # - self.norm = RMSNorm(cfg.dim, eps=cfg.norm_eps)
+        # - self.register_buffer("rope_freqs",
+        #     precompute_rope_freqs(cfg.head_dim, cfg.max_seq_len, cfg.rope_theta),
+        #     persistent=False)
+        self.embed_tokens = nn.Embedding(cfg.vocab_size, cfg.dim)
+        self.blocks = nn.ModuleList([TransformerBlock(dim = cfg.dim, n_heads = cfg.n_heads, n_kv_heads = cfg.n_kv_heads, ffn_hidden_dim = cfg.ffn_hidden_dim, norm_eps = cfg.norm_eps, use_qk_norm = cfg.use_qk_norm, ffn_activation = cfg.ffn_activation, causal = True) for _ in range(cfg.n_layers)])
+        self.norm = RMSNorm(cfg.dim, eps = cfg.norm_eps)
+        self.register_buffer("rope_freqs", precompute_rope_freqs(cfg.head_dim, cfg.max_seq_len, cfg.rope_theta), persistent = False)
+
+    def forward(self, inputs_embeds: torch.Tensor) -> torch.Tensor:
+        """
+        inputs_embeds: (batch, seq, dim) -- deja les embeddings, PAS les
+                       ids. Ce choix (accepter des embeddings plutot que
+                       des ids en entree du trunk) est ce qui permet a
+                       `ChiikaMiniVLM` de melanger tokens texte et
+                       patches image AVANT d'entrer dans les blocks --
+                       voir `token_embeddings()` ci-dessous pour la
+                       version "a partir d'ids".
+        return: (batch, seq, dim)
+
+        TODO:
+        1. seq_len = inputs_embeds.shape[1]
+        2. rope_freqs = self.rope_freqs[:seq_len]
+        3. x = inputs_embeds
+        4. for block in self.blocks: x = block(x, rope_freqs)
+        5. return self.norm(x)
+        """
+        seq_len = inputs_embeds.shape[1]
+        rope_freqs = self.rope_freqs[:seq_len]
+        x = inputs_embeds
+        for block in self.blocks:
+            x = block(x, rope_freqs)
+        return self.norm(x)
+
+    def token_embeddings(self, input_ids: torch.Tensor) -> torch.Tensor:
+        """TODO: return self.embed_tokens(input_ids) -- (batch, seq) -> (batch, seq, dim)."""
+        return self.embed_tokens(input_ids)
+
+class ChiikaMiniForCausalLM(nn.Module):
+    def __init__(self, cfg: TextConfig) -> None:
+        super().__init__()
+        self.cfg = cfg
+        self.trunk = ChiikaMiniTrunk(cfg)
+
+        # TODO:
+        # - self.lm_head = nn.Linear(cfg.dim, cfg.vocab_size, bias=False)
+        # - si cfg.tie_embeddings: self.lm_head.weight = self.trunk.embed_tokens.weight
+        #   (weight tying -- embedding d'entree et matrice de sortie
+        #   partagent les memes poids, cf. Press & Wolf 2016 ; divise
+        #   le nombre de parametres du vocabulaire par deux, souvent
+        #   sans perte de qualite voire un gain sur petits modeles).
+        self.lm_head = nn.Linear(cfg.dim, cfg.vocab_size, bias = False)
+        if cfg.tie_embeddings:
+            self.lm_head.weight = self.trunk.embed_tokens.weight
+            
+
+    def forward(self, input_ids: torch.Tensor, labels: torch.Tensor | None = None):
+        """
+        input_ids: (batch, seq)
+        labels: (batch, seq) ou None -- si fourni, calcule la loss
+                cross-entropy en plus des logits (labels decales de 1
+                par rapport a input_ids : labels[i] = input_ids[i+1]
+                pour la prediction du token suivant -- a faire faire par
+                l'appelant dans train.py, PAS ici, pour garder ce
+                forward simple).
+        return: logits (batch, seq, vocab_size), et loss (scalar) si
+                labels is not None sinon None.
+
+        TODO:
+        1. embeds = self.trunk.token_embeddings(input_ids)
+        2. hidden = self.trunk(embeds)
+        3. logits = self.lm_head(hidden)
+        4. loss = None
+        5. if labels is not None:
+             loss = F.cross_entropy(
+                 logits.reshape(-1, logits.size(-1)),
+                 labels.reshape(-1),
+                 ignore_index=-100,   # convention standard pour masquer certains tokens de la loss
+             )
+        6. return logits, loss
+        """
+        embeds = self.trunk.token_embeddings(input_ids)
+        hidden = self.trunk(embeds)
+        logits = self.lm_head(hidden)
+        loss = None
+        if labels is not None:
+            loss = torch.nn.functional.cross_entropy(
+                logits.reshape(-1, logits.size(-1)),
+                labels.reshape(-1),
+                ignore_index=-100,
+            )
+        return logits, loss
+
+
+class ChiikaMiniVLM(nn.Module):
+    def __init__(self, cfg: ChiikaMiniConfig) -> None:
+        super().__init__()
+        assert cfg.vision is not None, "ChiikaMiniVLM requiert cfg.vision (sinon utilise ChiikaMiniForCausalLM)"
+        self.cfg = cfg
+
+        # TODO:
+        # - self.lm = ChiikaMiniForCausalLM(cfg.text)
+        # - self.vision_encoder = VisionEncoder(cfg.vision)
+        # - self.projector = VisionProjector(cfg.vision.dim, cfg.text.dim)
+        raise NotImplementedError
+
+    def _merge_text_and_image_embeds(
+        self, input_ids: torch.Tensor, images: torch.Tensor | None
+    ) -> torch.Tensor:
+        """Construit la sequence d'embeddings d'entree du trunk texte,
+        en substituant les embeddings de patches image aux positions du
+        token special `<image>` (cf. LLaVA, PAPERS.md section "Vision").
+
+        input_ids: (batch, seq) -- contient `cfg.image_token_id` a la
+                   ou aux positions ou l'image doit s'inserer.
+        images: (batch, n_channels, image_size, image_size) ou None
+                (mode texte seul, aucun token image dans input_ids).
+        return: (batch, seq, dim)
+
+        TODO (cas le plus simple : un seul groupe contigu de tokens
+        <image>, dont le nombre == cfg.vision.n_patches, par exemple
+        l'utilisateur a pre-rempli input_ids avec n_patches copies du
+        token <image>) :
+        1. text_embeds = self.lm.trunk.token_embeddings(input_ids)  -- (batch, seq, dim)
+        2. if images is None: return text_embeds
+        3. vision_feats = self.projector(self.vision_encoder(images))  -- (batch, n_patches, dim)
+        4. Repere le masque des positions image :
+           image_mask = (input_ids == self.cfg.image_token_id)  -- (batch, seq), bool
+        5. Remplace text_embeds[image_mask] par vision_feats.reshape(-1, dim)
+           (attention a l'ordre : ca suppose que le nombre de True dans
+           image_mask, par exemple, correspond exactement a
+           batch * n_patches, et que l'ordre des positions correspond a
+           l'ordre des patches -- valable si tu construis tes sequences
+           d'entree ainsi dans data.py).
+        6. return text_embeds (modifie en place ou reconstruit, au choix)
+        """
+        raise NotImplementedError
+
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        images: torch.Tensor | None = None,
+        labels: torch.Tensor | None = None,
+    ):
+        """
+        Meme contrat que ChiikaMiniForCausalLM.forward, avec `images` en
+        plus. return: (logits, loss).
+
+        TODO:
+        1. embeds = self._merge_text_and_image_embeds(input_ids, images)
+        2. hidden = self.lm.trunk(embeds)
+        3. logits = self.lm.lm_head(hidden)
+        4. loss = None ; meme calcul de cross-entropy que ChiikaMiniForCausalLM
+           si labels is not None.
+        5. return logits, loss
+        """
+        raise NotImplementedError
+
+```

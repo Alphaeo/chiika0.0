@@ -23,12 +23,14 @@ class ToyTextDataset(Dataset):
         2. Tokenizer tout le texte d'un coup avec tokenizer.encode(...).
         3. Stocker self.ids (list[int] ou torch.tensor) et self.seq_len.
         """
-        raise NotImplementedError
+        text = Path(text_path).read_text(encoding="utf-8")
+        self.ids = tokenizer.encode(text)
+        self.seq_len = seq_len
 
     def __len__(self) -> int:
         """TODO: nombre de fenetres de seq_len+1 tokens qu'on peut extraire
         de self.ids sans chevauchement (ou avec un stride de ton choix)."""
-        raise NotImplementedError
+        return (len(self.ids) - 1) // self.seq_len
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
         """
@@ -42,7 +44,9 @@ class ToyTextDataset(Dataset):
         couper en input_ids (les seq_len premiers) et labels (les
         seq_len derniers).
         """
-        raise NotImplementedError
+        input_ids = self.ids[idx * self.seq_len : idx * self.seq_len + self.seq_len]
+        labels = self.ids[idx * self.seq_len + 1 : idx * self.seq_len + self.seq_len + 1]
+        return torch.tensor(input_ids), torch.tensor(labels)
 
 
 class ToyVLDataset(Dataset):
@@ -63,10 +67,18 @@ class ToyVLDataset(Dataset):
            __getitem__ (pas besoin de tout pre-generer en memoire pour
            un dataset aussi petit).
         """
-        raise NotImplementedError
+        self.tokenizer = tokenizer
+        self.image_size = image_size
+        self.n_patches = n_patches
+        self.shapes = ["carre", "cercle", "triangle"]
+        self.colors = ["rouge", "vert", "bleu"]
+        self.samples = [(shape, color) for shape in self.shapes for color in self.colors]
+        if len(self.samples) < n_samples:
+            raise ValueError(f"n_samples ({n_samples}) is greater than the number of unique shape-color pairs ({len(self.samples)}).")
+        self.samples = self.samples[:n_samples]
 
     def __len__(self) -> int:
-        raise NotImplementedError
+        return len(self.samples)
 
     def _make_synthetic_image(self, shape: str, color: str) -> torch.Tensor:
         """

@@ -1,0 +1,112 @@
+Computer science notes
+
+Big-O notation describes how the running time or memory usage of an
+algorithm grows as the size of its input grows. It ignores constant
+factors and lower-order terms, focusing only on the dominant term for
+large inputs. An algorithm that runs in O(1) time takes the same amount
+of time regardless of input size. An algorithm that runs in O(log n)
+time, like binary search, gets only slightly slower as the input
+doubles. An algorithm that runs in O(n) time, like a single pass over
+an array, scales linearly with input size. An algorithm that runs in
+O(n log n) time, like merge sort or quicksort on average, scales a bit
+worse than linear but much better than quadratic. An algorithm that
+runs in O(n^2) time, like a naive nested loop comparing every pair of
+elements, becomes impractical for large inputs.
+
+Arrays store elements in contiguous memory, so accessing any element by
+index takes O(1) time. Inserting or removing an element in the middle
+of an array takes O(n) time because every following element must shift.
+Linked lists store elements as nodes connected by pointers, so
+inserting or removing a node takes O(1) time once you have a reference
+to it, but accessing an arbitrary element takes O(n) time because you
+must walk the list from the head.
+
+A stack is a last-in-first-out structure: the last element pushed is
+the first one popped. Stacks are used to implement function call
+frames, undo history, and depth-first search. A queue is a
+first-in-first-out structure: the first element pushed is the first one
+popped. Queues are used to implement task scheduling and breadth-first
+search.
+
+A binary search tree keeps every node's left subtree smaller and right
+subtree larger, so searching, inserting, and deleting all take O(log n)
+time on average, but O(n) time in the worst case if the tree becomes
+unbalanced, for example when inserting already sorted data. Balanced
+trees like AVL trees and red-black trees restore the O(log n) guarantee
+by rebalancing after every insertion or deletion.
+
+A hash table maps keys to values using a hash function that converts a
+key into an array index. Lookup, insertion, and deletion all take O(1)
+time on average. Collisions happen when two different keys hash to the
+same index; common strategies to resolve them are chaining, where each
+array slot holds a small list of entries, and open addressing, where
+the table probes for the next free slot.
+
+Sorting algorithms illustrate different trade-offs. Bubble sort
+repeatedly swaps adjacent out-of-order elements and runs in O(n^2)
+time. Merge sort splits the array in half, recursively sorts each half,
+and merges the two sorted halves back together in O(n log n) time,
+using extra memory proportional to the input size. Quicksort picks a
+pivot element, partitions the array so smaller elements come before
+the pivot and larger elements come after, and recursively sorts each
+partition; its average case is O(n log n) but its worst case is O(n^2)
+if the pivot is chosen poorly. Heapsort builds a binary heap and
+repeatedly extracts the maximum element, running in O(n log n) time
+with no extra memory beyond the array itself.
+
+Graph traversal explores the nodes and edges of a graph. Depth-first
+search goes as deep as possible along each branch before backtracking,
+typically implemented with a stack or recursion. Breadth-first search
+explores all neighbors at the current depth before moving deeper,
+typically implemented with a queue. Dijkstra's algorithm finds the
+shortest path from a source node to every other node in a graph with
+non-negative edge weights, using a priority queue to always expand the
+closest unvisited node next.
+
+Dynamic programming solves a problem by breaking it into overlapping
+subproblems and storing the result of each subproblem so it is never
+recomputed. The classic example is computing Fibonacci numbers: a naive
+recursive implementation recomputes the same values exponentially many
+times, while a dynamic programming implementation stores each computed
+value in a table and reuses it, reducing the running time from
+exponential to linear.
+
+A neural network is a function made of layers, where each layer applies
+a linear transformation followed by a non-linear activation function.
+Without the non-linearity, stacking layers would collapse into a single
+linear transformation no matter how many layers were stacked, so the
+network could never learn anything more complex than a linear model.
+Common activation functions include ReLU, which outputs zero for
+negative inputs and the input itself for positive inputs, and sigmoid,
+which squashes any input into the range between zero and one.
+
+Gradient descent trains a neural network by repeatedly computing the
+gradient of a loss function with respect to every parameter, then
+nudging each parameter a small step in the direction that reduces the
+loss. The size of that step is called the learning rate. If the
+learning rate is too large, training can diverge and the loss can
+explode. If the learning rate is too small, training converges very
+slowly. Backpropagation is the algorithm that computes these gradients
+efficiently, by applying the chain rule of calculus backward through
+the network, layer by layer, reusing intermediate results instead of
+recomputing them from scratch for every parameter.
+
+The attention mechanism lets a model weigh the importance of different
+positions in a sequence when producing a representation for a given
+position. Each token is projected into a query, a key, and a value. The
+dot product between a query and a key measures how relevant that key is
+to the query, and the softmax of all these dot products produces a set
+of weights that sum to one. Multiplying the values by these weights and
+summing them produces the output for that position, so each token's
+output representation becomes a weighted average of the value vectors
+of every token it attends to, with more weight given to more relevant
+tokens.
+
+A tokenizer converts raw text into a sequence of integers that a neural
+network can process, because a network operates on numbers, not
+characters. A common approach is byte pair encoding, which starts from
+individual characters and repeatedly merges the most frequent adjacent
+pair into a new token, building up a vocabulary of common subwords.
+This lets rare words be split into smaller known pieces while common
+words are kept as a single token, giving a good balance between
+vocabulary size and sequence length.
