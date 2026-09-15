@@ -6,3 +6,4 @@ __pycache__/
 checkpoints/
 *.pt
 *.safetensors
+data/_tmp_*
