@@ -49,4 +49,32 @@ def generate(
        pour toutes les sequences du batch : break.
     6. return input_ids
     """
-    raise NotImplementedError
+    for _ in range(max_new_tokens):
+        if isinstance(model, ChiikaMiniVLM):
+            logits, _ = model(input_ids, images=images)
+        else:
+            logits, _ = model(input_ids)
+
+        next_token_logits = logits[:, -1, :]
+
+        if temperature == 0:
+            next_token = next_token_logits.argmax(dim=-1, keepdim=True)
+        else:
+            next_token_logits = next_token_logits / temperature
+            if top_k is not None:
+                top_values, _ = torch.topk(next_token_logits, top_k, dim=-1)
+                threshold = top_values[:, -1, None]
+                next_token_logits = torch.where(
+                    next_token_logits < threshold,
+                    torch.full_like(next_token_logits, float("-inf")),
+                    next_token_logits,
+                )
+            probs = F.softmax(next_token_logits, dim=-1)
+            next_token = torch.multinomial(probs, num_samples=1)
+
+        input_ids = torch.cat([input_ids, next_token], dim=1)
+
+        if eos_token_id is not None and (next_token == eos_token_id).all():
+            break
+
+    return input_ids

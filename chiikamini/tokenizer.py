@@ -27,17 +27,17 @@ class ChiikaTokenizer:
            synchroniser toi-meme entre les deux (pas de verif automatique
            pour l'instant).
         """
-        raise NotImplementedError
+        self.tokenizer = Tokenizer.from_pretrained(hf_tokenizer_name)
+        if self.tokenizer.token_to_id(image_token) is None:
+            self.tokenizer.add_special_tokens([image_token])
+        self.image_token_id = self.tokenizer.token_to_id(image_token)
 
     @property
     def vocab_size(self) -> int:
-        """TODO: retourner self.tokenizer.get_vocab_size()."""
-        raise NotImplementedError
+        return self.tokenizer.get_vocab_size()
 
     def encode(self, text: str) -> list[int]:
-        """TODO: retourner self.tokenizer.encode(text).ids"""
-        raise NotImplementedError
+        return self.tokenizer.encode(text).ids
 
     def decode(self, ids: list[int]) -> str:
-        """TODO: retourner self.tokenizer.decode(ids)"""
-        raise NotImplementedError
+        return self.tokenizer.decode(ids)
