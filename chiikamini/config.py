@@ -22,7 +22,11 @@ class TextConfig:
     rope_theta: float = 10000.0      # base de RoPE, cf. Su et al. 2021
     norm_eps: float = 1e-6
     use_qk_norm: bool = True         # QK-Norm (Qwen3), voir layers/norm.py
-    ffn_activation: str = "swiglu"   # "swiglu" ou "xielu" (experimental), voir layers/activations.py
+    ffn_activation: str = "xielu"     # "swiglu" ou "xielu" -- xielu retenu par defaut, cf.
+                                      # scripts/compare_activations.py : perplexite held-out
+                                      # 1061 (xielu) vs 1793 (swiglu) sur le corpus CS+code,
+                                      # avec moins de parametres. Un seul run/seed, a confirmer
+                                      # sur un corpus plus gros si besoin de certitude.
     tie_embeddings: bool = True      # partager les poids entre embedding et lm_head
 
     def __post_init__(self) -> None:
