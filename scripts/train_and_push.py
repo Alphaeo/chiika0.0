@@ -57,6 +57,12 @@ Code source : https://github.com/Alphaeo/chiika0.0
 
 
 def main() -> None:
+    sys.exit(
+        "OBSOLETE : ce script reentraine l'ancienne recette (27k tokens, tokenizer GPT-2) puis la publie sur "
+        f"{HF_REPO_ID}, ce qui ECRASERAIT le modele actuel.\n"
+        "Utiliser : python scripts/train_v2.py --report-test --out <dossier>   puis   "
+        "python scripts/push_model.py --checkpoint <dossier>"
+    )
     tokenizer = ChiikaTokenizer()
     dataset = ToyTextDataset(CORPUS_PATH, tokenizer, seq_len=SEQ_LEN)
 
