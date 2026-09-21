@@ -49,7 +49,8 @@ def main() -> None:
     model = load_checkpoint(checkpoint_dir)
     model.eval()
 
-    tokenizer = ChiikaTokenizer()
+    tokenizer_file = Path(checkpoint_dir) / "tokenizer.json"
+    tokenizer = ChiikaTokenizer(tokenizer_path=tokenizer_file if tokenizer_file.exists() else None)
 
     print("Modele charge. Tape un prompt (ou 'exit' pour quitter).\n")
 

@@ -54,13 +54,19 @@ def push_to_hub(checkpoint_dir: str | Path, repo_id: str, private: bool = True) 
     git.
 
     repo_id: "ton-namespace/nom-du-modele" (ex: "Crocolil/chiikamini-toy")
-    private: True par defaut -- pousse en prive tant que le modele n'est
-             qu'un test de plomberie, pas un vrai modele a partager.
+    private: visibilite demandee a la CREATION (True par defaut). Attention :
+             `create_repo(exist_ok=True)` ne change PAS la visibilite d'un depot qui existe
+             deja ; la visibilite reelle est relue apres coup et un avertissement est affiche
+             en cas d'ecart (un depot public n'est jamais silencieusement pris pour prive).
     return: l'URL du repo sur le Hub.
     """
     from huggingface_hub import HfApi
 
     api = HfApi()
     api.create_repo(repo_id, private=private, exist_ok=True)
+    actual_private = bool(api.repo_info(repo_id).private)
+    if actual_private != private:
+        print(f"ATTENTION : {repo_id} existe deja et est {'PRIVE' if actual_private else 'PUBLIC'} "
+              f"(demande : {'prive' if private else 'public'}). La visibilite d'un depot existant n'est pas modifiee.")
     api.upload_folder(folder_path=str(checkpoint_dir), repo_id=repo_id)
     return f"https://huggingface.co/{repo_id}"

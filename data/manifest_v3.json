@@ -1,0 +1,617 @@
+{
+ "sha1": {
+  "train": "c6cfc8ec69e1c0a128fb90f3c1e49f20df1a73dc",
+  "eval": "6f7af8d7f742511540a3425011af86c9b7aea4ef",
+  "test": "5cf5ba1e7847d4445ffd3e0083fb08191d34d0c0"
+ },
+ "tokenizer": "gpt2 (+ <image>)",
+ "train_tokens": 200504,
+ "eval_tokens": 25376,
+ "contamination_32_token_windows": 0.0154,
+ "test_tokens": 23854,
+ "contamination_test_vs_train": 0.0357,
+ "contamination_test_vs_eval": 0.0047,
+ "filters_and_dedup": {
+  "ignore_taille": 8,
+  "ignore_genere_ou_minifie": 13,
+  "train_retire_quasi_doublon": 2,
+  "eval_retire_contamination_fenetres": 5,
+  "test_retire_contamination_fenetres": 11
+ },
+ "train_files": [
+  {
+   "file": "chiikaml/src/ridge_regression.cpp",
+   "category": "cpp",
+   "tokens": 2585
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/collapsible.tsx",
+   "category": "typescript",
+   "tokens": 93
+  },
+  {
+   "file": "chiikaml/cli/main.cpp",
+   "category": "cpp",
+   "tokens": 1356
+  },
+  {
+   "file": "insta-trend-ai/backend/app/payments.py",
+   "category": "python",
+   "tokens": 237
+  },
+  {
+   "file": "chiikaml/include/chiikaml/binary_svm.hpp",
+   "category": "cpp",
+   "tokens": 1685
+  },
+  {
+   "file": "diamant/src/main.jsx",
+   "category": "javascript",
+   "tokens": 79
+  },
+  {
+   "file": "chiikaml/src/xgboost_tree.cpp",
+   "category": "cpp",
+   "tokens": 4135
+  },
+  {
+   "file": "chiikaml/python/bindings.cpp",
+   "category": "cpp",
+   "tokens": 5784
+  },
+  {
+   "file": "chiikaml/tests/test_xgboost_tree.cpp",
+   "category": "cpp",
+   "tokens": 1872
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/lib/api.ts",
+   "category": "typescript",
+   "tokens": 302
+  },
+  {
+   "file": "chiikaml/tests/test_tensor.cpp",
+   "category": "cpp",
+   "tokens": 4666
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/label.tsx",
+   "category": "typescript",
+   "tokens": 221
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/pages/Auth.tsx",
+   "category": "typescript",
+   "tokens": 223
+  },
+  {
+   "file": "chiikaml/tests/test_ridge_regression.cpp",
+   "category": "cpp",
+   "tokens": 2852
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/form.tsx",
+   "category": "typescript",
+   "tokens": 1359
+  },
+  {
+   "file": "diamant/src/App.jsx",
+   "category": "javascript",
+   "tokens": 29028
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/pages/Info.tsx",
+   "category": "typescript",
+   "tokens": 7254
+  },
+  {
+   "file": "chiikaml/include/chiikaml/knn.hpp",
+   "category": "cpp",
+   "tokens": 693
+  },
+  {
+   "file": "insta-trend-ai/README.md",
+   "category": "prose",
+   "tokens": 129
+  },
+  {
+   "file": "chiikaml/viz/frontend/src/main.tsx",
+   "category": "typescript",
+   "tokens": 83
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/hooks/useChat.ts",
+   "category": "typescript",
+   "tokens": 1826
+  },
+  {
+   "file": "chiikaml/include/chiikaml/decision_tree.hpp",
+   "category": "cpp",
+   "tokens": 1973
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/command.tsx",
+   "category": "typescript",
+   "tokens": 1751
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/pages/Trends.tsx",
+   "category": "typescript",
+   "tokens": 12635
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/RegisterForm.tsx",
+   "category": "typescript",
+   "tokens": 2073
+  },
+  {
+   "file": "chiikaml/include/chiikaml/tensor.hpp",
+   "category": "cpp",
+   "tokens": 3369
+  },
+  {
+   "file": "insta-trend-ai/frontend/vite.config.ts",
+   "category": "typescript",
+   "tokens": 685
+  },
+  {
+   "file": "insta-trend-ai/backend/app/tasks.py",
+   "category": "python",
+   "tokens": 115
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/badge.tsx",
+   "category": "typescript",
+   "tokens": 381
+  },
+  {
+   "file": "insta-trend-ai/frontend/eslint.config.js",
+   "category": "javascript",
+   "tokens": 316
+  },
+  {
+   "file": "chiikaml/include/chiikaml/ridge_regression.hpp",
+   "category": "cpp",
+   "tokens": 1002
+  },
+  {
+   "file": "chiikaml/tests/test_matrix.cpp",
+   "category": "cpp",
+   "tokens": 3995
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/contexts/AuthContext.tsx",
+   "category": "typescript",
+   "tokens": 1534
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/LoginForm.tsx",
+   "category": "typescript",
+   "tokens": 1524
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/pages/Chat.tsx",
+   "category": "typescript",
+   "tokens": 507
+  },
+  {
+   "file": "chiikaml/tests/test_classification_metrics.cpp",
+   "category": "cpp",
+   "tokens": 1966
+  },
+  {
+   "file": "chiikaml/tests/test_variable.cpp",
+   "category": "cpp",
+   "tokens": 2406
+  },
+  {
+   "file": "chiikaml/tests/test_lasso_regression.cpp",
+   "category": "cpp",
+   "tokens": 3262
+  },
+  {
+   "file": "chiikaml/include/chiikaml/matrix.hpp",
+   "category": "cpp",
+   "tokens": 2108
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/pages/Agency.tsx",
+   "category": "typescript",
+   "tokens": 5422
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/locales/ru/settings.ts",
+   "category": "typescript",
+   "tokens": 1998
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/toggle-group.tsx",
+   "category": "typescript",
+   "tokens": 579
+  },
+  {
+   "file": "chiikaml/viz/include/chiikaml/viz/dashboard.hpp",
+   "category": "cpp",
+   "tokens": 920
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/skeleton.tsx",
+   "category": "typescript",
+   "tokens": 79
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/contexts/I18nContext.tsx",
+   "category": "typescript",
+   "tokens": 1688
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/App.tsx",
+   "category": "typescript",
+   "tokens": 3000
+  },
+  {
+   "file": "chiikaml/python/benchmarks/evaluate_models.py",
+   "category": "python",
+   "tokens": 4314
+  },
+  {
+   "file": "insta-trend-ai/backend/app/etl.py",
+   "category": "python",
+   "tokens": 630
+  },
+  {
+   "file": "chiikaml/src/random_forest.cpp",
+   "category": "cpp",
+   "tokens": 2277
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/drawer.tsx",
+   "category": "typescript",
+   "tokens": 1035
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/radio-group.tsx",
+   "category": "typescript",
+   "tokens": 498
+  },
+  {
+   "file": "chiikaml/src/classification_metrics.cpp",
+   "category": "cpp",
+   "tokens": 2478
+  },
+  {
+   "file": "chiikaml/viz/src/visualize_kmeans.cpp",
+   "category": "cpp",
+   "tokens": 443
+  },
+  {
+   "file": "chiikaml/src/decision_tree.cpp",
+   "category": "cpp",
+   "tokens": 5028
+  },
+  {
+   "file": "chiikaml/viz/src/dashboard.cpp",
+   "category": "cpp",
+   "tokens": 1450
+  },
+  {
+   "file": "chiikaml/python/tests/test_bindings.py",
+   "category": "python",
+   "tokens": 1536
+  },
+  {
+   "file": "chiikaml/include/chiikaml/kdtree.hpp",
+   "category": "cpp",
+   "tokens": 1383
+  },
+  {
+   "file": "chiikaml/viz/include/chiikaml/viz/visualize_kmeans.hpp",
+   "category": "cpp",
+   "tokens": 329
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/card.tsx",
+   "category": "typescript",
+   "tokens": 590
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/hooks/use-toast.ts",
+   "category": "typescript",
+   "tokens": 1752
+  },
+  {
+   "file": "chiikaml/include/chiikaml/kmeans.hpp",
+   "category": "cpp",
+   "tokens": 1198
+  },
+  {
+   "file": "notes/cs_notes.txt",
+   "category": "prose",
+   "tokens": 1474
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/pages/Landing.tsx",
+   "category": "typescript",
+   "tokens": 2037
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/sheet.tsx",
+   "category": "typescript",
+   "tokens": 1531
+  },
+  {
+   "file": "insta-trend-ai/backend/app/celery_app.py",
+   "category": "python",
+   "tokens": 81
+  },
+  {
+   "file": "chiikaml/tests/test_kmeans.cpp",
+   "category": "cpp",
+   "tokens": 1308
+  },
+  {
+   "file": "chiikaml/src/train_test_split.cpp",
+   "category": "cpp",
+   "tokens": 1598
+  },
+  {
+   "file": "chiikaml/src/kmeans.cpp",
+   "category": "cpp",
+   "tokens": 2560
+  },
+  {
+   "file": "chiikaml/benchmarks/bench_random_forest_threading.cpp",
+   "category": "cpp",
+   "tokens": 1833
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/switch.tsx",
+   "category": "typescript",
+   "tokens": 395
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/sonner.tsx",
+   "category": "typescript",
+   "tokens": 359
+  },
+  {
+   "file": "chiikaml/tests/test_decision_tree.cpp",
+   "category": "cpp",
+   "tokens": 1162
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/alert.tsx",
+   "category": "typescript",
+   "tokens": 543
+  },
+  {
+   "file": "diamant/src/hooks/useSupabaseGame.js",
+   "category": "javascript",
+   "tokens": 1479
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/locales/fr/common.ts",
+   "category": "typescript",
+   "tokens": 387
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/calendar.tsx",
+   "category": "typescript",
+   "tokens": 1077
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/locales/en/common.ts",
+   "category": "typescript",
+   "tokens": 319
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/toggle.tsx",
+   "category": "typescript",
+   "tokens": 523
+  },
+  {
+   "file": "chiikaml/python/benchmarks/compare_sklearn.py",
+   "category": "python",
+   "tokens": 3207
+  },
+  {
+   "file": "insta-trend-ai/backend/app/chat.py",
+   "category": "python",
+   "tokens": 4472
+  },
+  {
+   "file": "insta-trend-ai/backend/app/apify.py",
+   "category": "python",
+   "tokens": 293
+  },
+  {
+   "file": "chiikaml/viz/frontend/README.md",
+   "category": "prose",
+   "tokens": 424
+  },
+  {
+   "file": "insta-trend-ai/backend/app/main.py",
+   "category": "python",
+   "tokens": 12402
+  },
+  {
+   "file": "chiikaml/python/tests/conftest.py",
+   "category": "python",
+   "tokens": 233
+  },
+  {
+   "file": "insta-trend-ai/frontend/tailwind.config.js",
+   "category": "javascript",
+   "tokens": 1447
+  },
+  {
+   "file": "chiikaml/include/chiikaml/metrics/classification_metrics.hpp",
+   "category": "cpp",
+   "tokens": 416
+  },
+  {
+   "file": "insta-trend-ai/backend/app/auth.py",
+   "category": "python",
+   "tokens": 2908
+  },
+  {
+   "file": "chiikaml/README.md",
+   "category": "prose",
+   "tokens": 5143
+  },
+  {
+   "file": "insta-trend-ai/backend/app/db.py",
+   "category": "python",
+   "tokens": 1066
+  }
+ ],
+ "eval_files": [
+  {
+   "file": "insta-trend-ai/backend/app/ai.py",
+   "category": "python",
+   "tokens": 719
+  },
+  {
+   "file": "chiikaml/include/chiikaml/model_selection/train_test_split.hpp",
+   "category": "cpp",
+   "tokens": 524
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/breadcrumb.tsx",
+   "category": "typescript",
+   "tokens": 1052
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/input-otp.tsx",
+   "category": "typescript",
+   "tokens": 838
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/Layout.tsx",
+   "category": "typescript",
+   "tokens": 2797
+  },
+  {
+   "file": "chiikaml/benchmarks/bench_matrix_layout.cpp",
+   "category": "cpp",
+   "tokens": 1970
+  },
+  {
+   "file": "chiikaml/include/chiikaml/svm_kernels.hpp",
+   "category": "cpp",
+   "tokens": 104
+  },
+  {
+   "file": "chiikaml/tests/test_xgboost_regressor.cpp",
+   "category": "cpp",
+   "tokens": 1100
+  },
+  {
+   "file": "chiikaml/src/matrix.cpp",
+   "category": "cpp",
+   "tokens": 9012
+  },
+  {
+   "file": "chiikaml/include/chiikaml/variable.hpp",
+   "category": "cpp",
+   "tokens": 2166
+  },
+  {
+   "file": "notes/eval_notes.txt",
+   "category": "prose",
+   "tokens": 1182
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/pages/NotFound.tsx",
+   "category": "typescript",
+   "tokens": 281
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/tabs.tsx",
+   "category": "typescript",
+   "tokens": 682
+  },
+  {
+   "file": "diamant/README.md",
+   "category": "prose",
+   "tokens": 1446
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/pagination.tsx",
+   "category": "typescript",
+   "tokens": 982
+  }
+ ],
+ "test_files": [
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/avatar.tsx",
+   "category": "typescript",
+   "tokens": 450
+  },
+  {
+   "file": "chiikaml/src/tensor.cpp",
+   "category": "cpp",
+   "tokens": 7517
+  },
+  {
+   "file": "chiikaml/src/kdtree.cpp",
+   "category": "cpp",
+   "tokens": 2450
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ProtectedRoute.tsx",
+   "category": "typescript",
+   "tokens": 821
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/pages/Help.tsx",
+   "category": "typescript",
+   "tokens": 5823
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/button.tsx",
+   "category": "typescript",
+   "tokens": 687
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/progress.tsx",
+   "category": "typescript",
+   "tokens": 260
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/separator.tsx",
+   "category": "typescript",
+   "tokens": 243
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/locales/fr/settings.ts",
+   "category": "typescript",
+   "tokens": 1053
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/checkbox.tsx",
+   "category": "typescript",
+   "tokens": 363
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/components/ui/scroll-area.tsx",
+   "category": "typescript",
+   "tokens": 533
+  },
+  {
+   "file": "chiikaml/src/knn.cpp",
+   "category": "cpp",
+   "tokens": 1224
+  },
+  {
+   "file": "chiikaml/include/chiikaml/random_forest.hpp",
+   "category": "cpp",
+   "tokens": 1670
+  },
+  {
+   "file": "insta-trend-ai/frontend/src/hooks/use-mobile.tsx",
+   "category": "typescript",
+   "tokens": 213
+  }
+ ]
+}

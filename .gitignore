@@ -7,3 +7,10 @@ checkpoints/
 *.pt
 *.safetensors
 data/_tmp_*
+data/train_v3.txt
+data/eval_v3.txt
+data/tokenizer_*.json
+data/*_v2.txt
+data/test_v3.txt
+data/train_v4.txt
+data/hub_code_v1.txt
