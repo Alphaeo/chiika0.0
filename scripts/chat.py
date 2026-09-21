@@ -4,7 +4,7 @@ chaque prompt tape au clavier.
 
 Usage :
     python scripts/chat.py
-    python scripts/chat.py --checkpoint checkpoints/chiikamini-xielu   # ancien modele (GPT-2, 27k tokens)
+    python scripts/chat.py --checkpoint checkpoints/chiikamini-v4-final   # version precedente (5 Mo de code du Hub)
     python scripts/chat.py --checkpoint Crocolil/Chiikamini --from-hub
     python scripts/chat.py --temperature 0 --max-new-tokens 60
 
@@ -29,7 +29,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="REPL pour tester chiikamini a la main")
     parser.add_argument(
         "--checkpoint",
-        default="checkpoints/chiikamini-v4-final",
+        default="checkpoints/chiikamini-v5",
         help="dossier local (defaut) ou repo_id du Hugging Face Hub avec --from-hub",
     )
     parser.add_argument("--from-hub", action="store_true", help="telecharge --checkpoint depuis le Hub")

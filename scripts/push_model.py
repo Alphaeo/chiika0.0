@@ -2,7 +2,7 @@
 
 - Genere README.md (model card) a partir de history.json : chiffres reels du run,
   jamais saisis a la main.
-- Joint la provenance des donnees (data/manifest_v4.json -> training_data_manifest.json),
+- Joint la provenance des donnees (data/manifest_<version>.json -> training_data_manifest.json),
   qui liste depot, chemin et licence de chaque fichier de code public utilise.
 - Visibilite demandee a la creation : PRIVE par defaut (--public pour changer) ; la visibilite
   d'un depot deja existant n'est jamais modifiee, la valeur reelle est affichee a la fin. Pas de token en argument : utilise la
@@ -89,7 +89,8 @@ choisi sur `eval` ({best['epoch']}, perplexite {best['eval_ppl']:.1f} par token)
 
 **Limites** : un seul run, une seule graine ; les jeux eval/test sont des fichiers de l'auteur, presque
 uniquement du C++ et du TypeScript (tres peu de Python) ; l'amelioration cumule plus de donnees, un tokenizer de
-domaine, une correction d'initialisation et un reglage du LR, sans ablation pour les separer.
+domaine, une correction d'initialisation, un reglage du LR et un contexte de {cfg['max_seq_len']} tokens (64 pour
+les versions precedentes), sans ablation pour les separer.
 
 ## Utilisation
 L'architecture est custom : elle ne se charge pas avec `transformers`. Voir
@@ -108,9 +109,11 @@ def main() -> None:
 
     history = json.loads((args.checkpoint / "history.json").read_text(encoding="utf-8"))
     manifest = None
-    if "v4" in history.get("train_file", ""):
-        shutil.copyfile(DATA / "manifest_v4.json", args.checkpoint / "training_data_manifest.json")
-        manifest = json.loads((DATA / "manifest_v4.json").read_text(encoding="utf-8"))
+    tag = Path(history.get("train_file", "")).stem.split("_")[-1]          # train_v5.txt -> v5
+    manifest_path = DATA / f"manifest_{tag}.json"
+    if tag != "v3" and manifest_path.exists():                              # v3 = ton code seul, pas de code du Hub
+        shutil.copyfile(manifest_path, args.checkpoint / "training_data_manifest.json")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
     card = build_model_card(history, manifest)
     (args.checkpoint / "README.md").write_text(card, encoding="utf-8")

@@ -37,7 +37,6 @@ from chiikamini.train import train_loop
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA = REPO_ROOT / "data"
 
-SEQ_LEN = 64
 # Modele publie (GPT-2, entraine sur 27k tokens), mesure en bits/octet sur le dataset v3.
 REFERENCE_BPB = {"eval": 5.579, "test": 5.224}
 
@@ -46,7 +45,7 @@ PROMPTS = ["def forward(self", "class Matrix", "A binary search tree", "for (std
 
 def check_dataset_fingerprint(train_file: Path) -> None:
     """Le dataset doit etre celui du manifest : sinon deux runs ne sont pas comparables."""
-    manifest_file = DATA / ("manifest_v4.json" if "v4" in train_file.name else "manifest_v3.json")
+    manifest_file = DATA / f"manifest_{train_file.stem.split('_')[-1]}.json"   # train_v5.txt -> manifest_v5.json
     manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
     for split, path in (("train", train_file), ("eval", DATA / "eval_v3.txt"), ("test", DATA / "test_v3.txt")):
         text = path.read_text(encoding="utf-8")
@@ -60,7 +59,7 @@ def check_dataset_fingerprint(train_file: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Reentraine chiikamini (tokenizer BPE de domaine)")
     parser.add_argument("--train-file", type=Path, default=DATA / "train_v4.txt",
-                        help="train_v4.txt (avec code du Hub, defaut) ou train_v3.txt (ton code seul)")
+                        help="train_v4.txt (defaut), train_v5.txt (plus de code du Hub) ou train_v3.txt (ton code seul)")
     parser.add_argument("--tokenizer", type=Path, default=DATA / "tokenizer_bpe8192.json")
     parser.add_argument("--steps-per-epoch", type=int, default=None,
                         help="epochs partiels de k pas (gros corpus) ; defaut : epoch complet")
@@ -69,6 +68,9 @@ def main() -> None:
     parser.add_argument("--patience", type=int, default=3)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--warmup-steps", type=int, default=200)
+    parser.add_argument("--seq-len", type=int, default=64, help="longueur de contexte (fenetres d'entrainement et max_seq_len)")
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--activation", default="xielu", choices=["xielu", "swiglu"])
     parser.add_argument("--dim", type=int, default=128)
     parser.add_argument("--n-layers", type=int, default=4)
     parser.add_argument("--n-heads", type=int, default=4)
@@ -83,11 +85,11 @@ def main() -> None:
 
     check_dataset_fingerprint(args.train_file)
     tokenizer = ChiikaTokenizer(tokenizer_path=args.tokenizer)
-    train_ds = ToyTextDataset(args.train_file, tokenizer, seq_len=SEQ_LEN)
+    train_ds = ToyTextDataset(args.train_file, tokenizer, seq_len=args.seq_len)
     if args.random_windows:   # meme nombre de fenetres par epoch que la baseline : meme budget de calcul
-        train_ds = RandomWindowTextDataset(args.train_file, tokenizer, seq_len=SEQ_LEN,
+        train_ds = RandomWindowTextDataset(args.train_file, tokenizer, seq_len=args.seq_len,
                                            windows_per_epoch=len(train_ds), seed=0)
-    eval_ds = ToyTextDataset(DATA / "eval_v3.txt", tokenizer, seq_len=SEQ_LEN)
+    eval_ds = ToyTextDataset(DATA / "eval_v3.txt", tokenizer, seq_len=args.seq_len)
     print(f"tokenizer vocab={tokenizer.vocab_size} | fenetres train={len(train_ds)} eval={len(eval_ds)}")
 
     cfg = TextConfig(
@@ -97,8 +99,8 @@ def main() -> None:
         n_heads=args.n_heads,
         n_kv_heads=args.n_kv_heads,
         ffn_hidden_dim=args.ffn_hidden_dim,
-        max_seq_len=SEQ_LEN,
-        ffn_activation="xielu",
+        max_seq_len=args.seq_len,
+        ffn_activation=args.activation,
         dropout=args.dropout,
     )
     model = ChiikaMiniForCausalLM(cfg)
@@ -107,17 +109,17 @@ def main() -> None:
     history = train_loop(
         model, train_ds, n_epochs=args.epochs, batch_size=args.batch_size, lr=args.lr,
         warmup_steps=args.warmup_steps, eval_dataset=eval_ds,
-        patience=args.patience, restore_best=True, steps_per_epoch=args.steps_per_epoch,
+        patience=args.patience, restore_best=True, steps_per_epoch=args.steps_per_epoch, seed=args.seed,
     )
 
     train_seconds = time.time() - started
     eval_path = DATA / "eval_v3.txt"
-    bpb = bits_per_byte(model, tokenizer, eval_path, seq_len=SEQ_LEN, batch_size=args.batch_size)
+    bpb = bits_per_byte(model, tokenizer, eval_path, seq_len=args.seq_len, batch_size=args.batch_size)
     ppl = perplexity(model, eval_ds, batch_size=args.batch_size)
     results = {"eval": bpb}
     print(f"\nRESULTAT  eval : {bpb:.3f} bits/octet | perplexite par token {ppl:.1f}")
     if args.report_test:
-        results["test"] = bits_per_byte(model, tokenizer, DATA / "test_v3.txt", seq_len=SEQ_LEN, batch_size=args.batch_size)
+        results["test"] = bits_per_byte(model, tokenizer, DATA / "test_v3.txt", seq_len=args.seq_len, batch_size=args.batch_size)
     for split, value in results.items():
         ref = REFERENCE_BPB[split]
         print(f"  {split:4s}: {value:.3f} bits/octet  (modele publie GPT-2/27k : {ref:.3f}  ->  {value - ref:+.3f}, {100 * (value / ref - 1):+.1f} %)")
@@ -131,6 +133,8 @@ def main() -> None:
     (args.out / "history.json").write_text(json.dumps({
         "config": dataclasses.asdict(cfg),
         "lr": args.lr,
+        "seed": args.seed,
+        "seq_len": args.seq_len,
         "train_file": args.train_file.name,
         "tokenizer": args.tokenizer.name,
         "steps_per_epoch": args.steps_per_epoch,

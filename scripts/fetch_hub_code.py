@@ -60,6 +60,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Ajoute du code public du Hub au corpus (train_v4)")
     parser.add_argument("--shards", type=int, nargs="+", default=[440])
     parser.add_argument("--budget-bytes", type=int, default=5_000_000)
+    parser.add_argument("--tag", default="v4", help="version des fichiers produits : train_<tag>.txt, manifest_<tag>.json")
     args = parser.parse_args()
 
     tokenizer = ChiikaTokenizer()
@@ -134,12 +135,12 @@ def main() -> None:
             break
 
     hub_text = render(kept)
-    (DATA / "hub_code_v1.txt").write_text(hub_text, encoding="utf-8", newline="\n")
+    (DATA / f"hub_code_{args.tag}.txt").write_text(hub_text, encoding="utf-8", newline="\n")
     train_v4 = train_v3_text + hub_text
-    (DATA / "train_v4.txt").write_text(train_v4, encoding="utf-8", newline="\n")
+    (DATA / f"train_{args.tag}.txt").write_text(train_v4, encoding="utf-8", newline="\n")
 
     manifest = {
-        "note": "train_v4 = train_v3 + code du Hub ; eval_v3 et test_v3 inchanges",
+        "note": f"train_{args.tag} = train_v3 + code du Hub ; eval_v3 et test_v3 inchanges",
         "source": DATASET,
         "shards": args.shards,
         "permissive_licenses": sorted(PERMISSIVE),
@@ -154,14 +155,14 @@ def main() -> None:
         "hub_fichiers": [{"repo": f["repo"], "path": f["path"], "license": f["license"], "language": f["language"],
                           "bytes": f["bytes"], "sha1": f["sha1"]} for f in sorted(kept, key=lambda f: f["order"])],
     }
-    (DATA / "manifest_v4.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8")
+    (DATA / f"manifest_{args.tag}.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8")
 
     hub_tokens = len(tokenizer.encode(hub_text))
     print(f"\nFiltres : {dict(stats)}")
     print(f"HUB : {len(kept)} fichiers, {len({f['repo'] for f in kept})} depots, {sum(taken.values()) / 1e6:.2f} Mo, {hub_tokens} tokens GPT-2")
     print(f"  par categorie (Mo) : { {c: round(v / 1e6, 2) for c, v in taken.items()} }  (quotas : { {c: round(v / 1e6, 2) for c, v in quota.items()} })")
     print(f"  licences : {manifest['hub_licences']}")
-    print(f"TRAIN_v4 : {len(tokenizer.encode(train_v4))} tokens GPT-2 (train_v3 : {len(tokenizer.encode(train_v3_text))})")
+    print(f"TRAIN_{args.tag} : {len(tokenizer.encode(train_v4))} tokens GPT-2 (train_v3 : {len(tokenizer.encode(train_v3_text))})")
 
 
 if __name__ == "__main__":
