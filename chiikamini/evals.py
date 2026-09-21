@@ -48,7 +48,20 @@ def perplexity(
        continuer l'entrainement si l'appelant enchaine dessus.
     6. return math.exp(total_loss / total_tokens)
     """
-    raise NotImplementedError
+    model.eval()
+    if device is not None:
+        model.to(device)
+    loader = DataLoader(dataset, batch_size=batch_size)
+    total_loss = 0.0
+    total_tokens = 0
+    for input_ids, labels in loader :
+        if device is not None:
+            input_ids, labels = input_ids.to(device), labels.to(device)
+        _, loss = model(input_ids=input_ids, labels=labels)
+        total_loss += loss.item() * input_ids.numel()
+        total_tokens += input_ids.numel()
+    model.train()
+    return math.exp(total_loss / total_tokens)
 
 
 def eval_fixed_prompts(
@@ -76,4 +89,13 @@ def eval_fixed_prompts(
        c. texte = tokenizer.decode(out[0].tolist())
     3. return la liste des textes.
     """
-    raise NotImplementedError
+    model.eval()
+    generated_texts = []
+    for prompt in prompts:
+         ids = torch.tensor([tokenizer.encode(prompt)])
+         if device is not None:
+               ids = ids.to(device)
+         out = generate(model, ids, images=None, max_new_tokens=max_new_tokens, temperature=0)
+         texte = tokenizer.decode(out[0].tolist())
+         generated_texts.append(texte)
+    return generated_texts
