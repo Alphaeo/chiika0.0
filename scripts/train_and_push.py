@@ -5,7 +5,11 @@ sauvegarde le checkpoint, et le publie sur le Hugging Face Hub.
 Usage : python scripts/train_and_push.py
 """
 
+import sys
 from pathlib import Path
+
+# `python scripts/x.py` met scripts/ dans sys.path, pas la racine du repo.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import torch
 

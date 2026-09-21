@@ -12,6 +12,11 @@ Tape 'exit' (ou Ctrl+C / Ctrl+D) pour quitter.
 """
 
 import argparse
+import sys
+from pathlib import Path
+
+# `python scripts/chat.py` met scripts/ dans sys.path, pas la racine du repo.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import torch
 
