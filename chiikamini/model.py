@@ -38,7 +38,11 @@ class ChiikaMiniTrunk(nn.Module):
         #     precompute_rope_freqs(cfg.head_dim, cfg.max_seq_len, cfg.rope_theta),
         #     persistent=False)
         self.embed_tokens = nn.Embedding(cfg.vocab_size, cfg.dim)
-        self.blocks = nn.ModuleList([TransformerBlock(dim = cfg.dim, n_heads = cfg.n_heads, n_kv_heads = cfg.n_kv_heads, ffn_hidden_dim = cfg.ffn_hidden_dim, norm_eps = cfg.norm_eps, use_qk_norm = cfg.use_qk_norm, ffn_activation = cfg.ffn_activation, causal = True) for _ in range(cfg.n_layers)])
+        # std=0.02 (standard GPT-2/Llama). Par defaut nn.Embedding est en N(0,1) ; comme lm_head
+        # partage cette matrice (tie_embeddings), les logits initiaux avaient un ecart-type ~11
+        # et la loss de depart ~107 au lieu de ln(vocab) ~ 8.3.
+        nn.init.normal_(self.embed_tokens.weight, mean=0.0, std=0.02)
+        self.blocks = nn.ModuleList([TransformerBlock(dim = cfg.dim, n_heads = cfg.n_heads, n_kv_heads = cfg.n_kv_heads, ffn_hidden_dim = cfg.ffn_hidden_dim, norm_eps = cfg.norm_eps, use_qk_norm = cfg.use_qk_norm, ffn_activation = cfg.ffn_activation, causal = True, dropout = cfg.dropout) for _ in range(cfg.n_layers)])
         self.norm = RMSNorm(cfg.dim, eps = cfg.norm_eps)
         self.register_buffer("rope_freqs", precompute_rope_freqs(cfg.head_dim, cfg.max_seq_len, cfg.rope_theta), persistent = False)
 

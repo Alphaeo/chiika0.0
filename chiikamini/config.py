@@ -28,6 +28,7 @@ class TextConfig:
                                       # avec moins de parametres. Un seul run/seed, a confirmer
                                       # sur un corpus plus gros si besoin de certitude.
     tie_embeddings: bool = True      # partager les poids entre embedding et lm_head
+    dropout: float = 0.0             # dropout residuel dans TransformerBlock (0 = desactive) -- voir TODO.md
 
     def __post_init__(self) -> None:
         assert self.n_heads % self.n_kv_heads == 0, "n_heads doit etre un multiple de n_kv_heads (GQA)"

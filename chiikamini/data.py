@@ -49,6 +49,62 @@ class ToyTextDataset(Dataset):
         return torch.tensor(input_ids), torch.tensor(labels)
 
 
+class RandomWindowTextDataset(Dataset):
+    """Comme ToyTextDataset, mais les fenetres commencent a un offset
+    ALEATOIRE, different a chaque epoch, au lieu d'etre alignees sur des
+    multiples de seq_len. Avec peu de donnees, le modele revoit sinon
+    exactement les memes fenetres a chaque epoch et les memorise ; avec des
+    offsets varies, les memes tokens apparaissent dans des contextes
+    decales, ce qui retarde la memorisation (voir TODO.md, point 4).
+
+    Contrat (verifie par tests/test_regularization_and_windows.py) :
+    - len(ds) == windows_per_epoch (independant de la taille du corpus)
+    - ds[i] -> (input_ids, labels), chacun (seq_len,), labels = input_ids
+      decale d'un token (comme ToyTextDataset)
+    - deterministe : meme (seed, epoch, idx) -> meme fenetre. Indispensable
+      pour la reproductibilite ET pour que ca marche avec un DataLoader
+      (shuffle, plusieurs workers) : ne PAS stocker d'etat aleatoire global.
+    - set_epoch(e) change les offsets ; deux epochs differents donnent des
+      fenetres differentes
+    - toute fenetre tient dans le corpus (pas de fenetre tronquee)
+    """
+
+    def __init__(self, text_path: str | Path, tokenizer: ChiikaTokenizer, seq_len: int,
+                 windows_per_epoch: int, seed: int = 0) -> None:
+        """
+        TODO:
+        1. Lire le fichier, tokenizer une fois (comme ToyTextDataset).
+        2. Stocker self.ids, self.seq_len, self.windows_per_epoch, self.seed
+           et self.epoch = 0.
+        3. Calculer self.max_start = len(ids) - seq_len - 1 (dernier offset
+           valide : il faut seq_len + 1 tokens a partir de `start`). Lever
+           une ValueError si le corpus est trop court (max_start < 0).
+        """
+        raise NotImplementedError
+
+    def set_epoch(self, epoch: int) -> None:
+        """TODO: memoriser l'epoch courant (train_loop l'appelle au debut de
+        chaque epoch si le dataset a cette methode)."""
+        raise NotImplementedError
+
+    def __len__(self) -> int:
+        """TODO: return self.windows_per_epoch"""
+        raise NotImplementedError
+
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        TODO:
+        1. Tirer un offset dans [0, max_start] de facon deterministe a partir
+           de (seed, epoch, idx). Piste : un generateur local,
+             g = torch.Generator().manual_seed(self.seed + 1_000_003 * self.epoch + idx)
+             start = torch.randint(0, self.max_start + 1, (1,), generator=g).item()
+        2. input_ids = ids[start : start + seq_len]
+           labels    = ids[start + 1 : start + seq_len + 1]
+        3. return torch.tensor(input_ids), torch.tensor(labels)
+        """
+        raise NotImplementedError
+
+
 class ToyVLDataset(Dataset):
     """Paires (image, texte) jouets pour tester ChiikaMiniVLM. Pour la
     v1, une poignee d'images synthetiques (formes/couleurs generees a la

@@ -25,6 +25,7 @@ class TransformerBlock(nn.Module):
         use_qk_norm: bool = True,
         ffn_activation: str = "swiglu",
         causal: bool = True,
+        dropout: float = 0.0,
     ) -> None:
         super().__init__()
         # TODO: instancier
@@ -36,6 +37,16 @@ class TransformerBlock(nn.Module):
         self.attn = Attention(dim, n_heads, n_kv_heads, norm_eps, use_qk_norm, causal)
         self.ffn_norm = RMSNorm(dim, eps=norm_eps)
         self.ffn = FeedForward(dim, ffn_hidden_dim, ffn_activation)
+
+        # TODO (dropout, voir TODO.md) : creer une couche nn.Dropout(dropout)
+        # et l'appliquer a la SORTIE de chaque sous-couche, AVANT l'addition
+        # residuelle :
+        #     x = x + self.drop(self.attn(self.attn_norm(x), rope_freqs))
+        #     x = x + self.drop(self.ffn(self.ffn_norm(x)))
+        # nn.Dropout est actif en model.train() et desactive en model.eval()
+        # tout seul -- rien a gerer a la main. Supprimer ce garde-fou une fois fait.
+        if dropout > 0:
+            raise NotImplementedError("dropout > 0 : a implementer, voir le TODO dans TransformerBlock")
 
     def forward(self, x: torch.Tensor, rope_freqs: torch.Tensor) -> torch.Tensor:
         """

@@ -9,6 +9,8 @@ Lancer : python -m pytest tests/ -v
 Lancer un seul test : python -m pytest tests/test_shapes.py::test_rmsnorm_shape -v
 """
 
+import math
+
 import torch
 
 from chiikamini.config import ChiikaMiniConfig, TextConfig, VisionConfig
@@ -237,3 +239,19 @@ def test_vlm_forward_shape():
     logits, loss = model(input_ids, images=images)
     assert logits.shape == (BATCH, SEQ, text_cfg.vocab_size)
     assert loss is None
+
+
+def test_initial_loss_is_close_to_uniform_prediction():
+    """Un modele non entraine doit predire ~uniformement : loss ~ ln(vocab).
+    Regression : avec nn.Embedding en N(0,1) partage avec lm_head, la loss
+    initiale valait ~107 pour un vocabulaire de 4096 (attendu : 8.3), et les
+    premiers epochs servaient juste a reparer l'initialisation."""
+    torch.manual_seed(0)
+    vocab = 4096
+    cfg = TextConfig(vocab_size=vocab, dim=128, n_layers=2, n_heads=4, n_kv_heads=2,
+                     ffn_hidden_dim=176, max_seq_len=64)
+    model = ChiikaMiniForCausalLM(cfg)
+    ids = torch.randint(0, vocab, (8, 64))
+    labels = torch.randint(0, vocab, (8, 64))
+    _, loss = model(ids, labels=labels)
+    assert abs(loss.item() - math.log(vocab)) < 1.0
