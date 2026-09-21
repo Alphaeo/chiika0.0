@@ -1,0 +1,1082 @@
+Computer science notes (held-out evaluation set)
+
+An operating system manages the hardware of a computer and shares it
+between programs. A process is a running program with its own private
+address space, while a thread is a lightweight unit of execution that
+shares the address space of the process that created it. The scheduler
+decides which thread runs on which processor core and for how long.
+Virtual memory gives every process the illusion of owning a large,
+contiguous block of memory. The operating system splits that space into
+fixed-size pages and maps each page to a frame of physical memory using
+a page table. When a program touches a page that is not currently in
+physical memory, the processor raises a page fault and the operating
+system loads the missing page from disk, possibly evicting another page
+to make room.
+
+Concurrency means that several tasks make progress during overlapping
+periods of time. When two threads read and write the same variable
+without coordination, the result depends on the exact order of their
+operations, which is called a race condition. A mutex is a lock that
+only one thread can hold at a time, so the code between acquiring and
+releasing it runs without interference. If two threads each hold one
+lock and wait for the other one, neither can ever continue, and this
+situation is called a deadlock. A common way to avoid deadlocks is to
+make every thread acquire locks in the same global order.
+
+A network protocol is a set of rules that two machines follow to
+exchange data. The Internet Protocol moves packets from one machine to
+another but does not guarantee that they arrive, arrive once, or arrive
+in order. The Transmission Control Protocol builds a reliable stream on
+top of it: it numbers every byte, acknowledges what was received,
+retransmits what was lost, and slows down when the network is
+congested. The Hypertext Transfer Protocol is a request and response
+protocol on top of TCP. A client sends a method such as GET or POST
+together with a path and some headers, and the server answers with a
+status code such as 200 for success or 404 for a missing resource.
+
+A relational database stores data in tables made of rows and columns.
+A primary key uniquely identifies each row, and a foreign key links a
+row in one table to a row in another. Without an index, finding rows
+that match a condition requires scanning the whole table. An index is
+usually a balanced tree that keeps the values of a column sorted, so a
+lookup takes logarithmic time instead of linear time, at the cost of
+extra storage and slower writes. A transaction groups several
+operations so that they either all succeed or all have no effect. The
+properties atomicity, consistency, isolation, and durability describe
+what a database promises about its transactions.
+
+A compiler translates source code written by a human into a form that a
+machine can execute. The lexer first splits the text into tokens such
+as identifiers, numbers, and operators. The parser then arranges the
+tokens into a tree that reflects the grammar of the language, called
+the abstract syntax tree. Later stages check types, simplify the tree,
+and finally generate machine instructions. An interpreter skips the
+last step and executes the tree or an intermediate bytecode directly,
+which is simpler but usually slower.
+
+A cache is a small and fast memory that keeps copies of data that were
+used recently, because programs tend to use the same data again soon
+and to use data close to what they just used. When the requested data
+is in the cache, the access is a hit and is fast. Otherwise it is a
+miss and the data must be fetched from the slower memory below. A least
+recently used policy removes the entry that has not been touched for
+the longest time when the cache is full. Traversing a two dimensional
+array row by row is much faster than column by column when the array is
+stored row by row, because consecutive elements share cache lines.
+
+Recursion is a technique where a function solves a problem by calling
+itself on a smaller instance of the same problem. Every recursive
+function needs a base case that stops the recursion, otherwise the
+calls never end and the stack overflows. Computing the factorial of n
+by multiplying n with the factorial of n minus one is the classic
+example. A recursive function can often be rewritten as a loop with an
+explicit stack, which avoids the limit on the depth of the call stack.
+
+A version control system records the history of a project as a series
+of snapshots called commits. Each commit stores a reference to its
+parent, so the history forms a graph. A branch is a movable pointer to
+one commit, which lets several lines of work proceed in parallel. When
+two branches change the same lines of a file, merging them produces a
+conflict that a human has to resolve by choosing which version to keep.
+
+Linear regression fits a straight line to a set of points by choosing
+the slope and the intercept that minimize the sum of the squared
+differences between the predicted and the observed values. Ridge
+regression adds a penalty proportional to the squared size of the
+weights, which shrinks them and reduces overfitting. Lasso regression
+penalizes the absolute size of the weights instead, which can push some
+of them exactly to zero and therefore performs feature selection. A
+random forest trains many decision trees on random samples of the data
+and averages their predictions, which reduces the variance of a single
+deep tree.
+
+
+# --- include/chiikaml/linear_regression.hpp (cpp) ---
+
+```cpp
+#pragma once
+
+#include <cstddef>
+#include <vector>
+
+#include "chiikaml/matrix.hpp"
+
+namespace chiikaml {
+
+// Regression lineaire par la methode des moindres carres.
+//
+// Le modele cherche une relation lineaire entre les features X et
+// la variable cible y :
+//
+//     y_pred = X * coefficients + intercept
+//
+// L'entrainement cherche les coefficients et l'intercept qui
+// minimisent la somme des erreurs au carre :
+//
+//     sum((y_true - y_pred)^2)
+class LinearRegression {
+public:
+    // Si fit_intercept vaut true, le modele apprend une constante
+    // en plus des coefficients associes aux features.
+    //
+    // Si fit_intercept vaut false, l'intercept reste egal a 0 et
+    // le modele est force a passer par l'origine.
+    explicit LinearRegression(bool fit_intercept = true);
+
+    // Entraine le modele.
+    //
+    // X : une ligne par echantillon, une colonne par feature.
+    // y : une valeur cible par ligne de X.
+    //
+    // X.rows() doit etre egal a y.size().
+    // X et y ne doivent pas etre vides.
+    void fit(const Matrix& X, const std::vector<double>& y);
+
+    // Predit une valeur pour chaque ligne de X.
+    //
+    // X doit avoir le meme nombre de colonnes que le jeu
+    // d'entrainement. Doit etre appelee apres fit().
+    std::vector<double> predict(const Matrix& X) const;
+
+    // Renvoie les coefficients appris, dans le meme ordre que les
+    // colonnes du jeu d'entrainement.
+    const std::vector<double>& coefficients() const;
+
+    // Renvoie l'intercept appris.
+    //
+    // Vaut toujours 0 si le modele a ete construit avec
+    // fit_intercept = false.
+    double intercept() const;
+
+private:
+    bool fit_intercept_;
+    bool fitted_;
+    std::size_t n_features_;
+
+    std::vector<double> coefficients_;
+    double intercept_;
+
+    // Predit la valeur correspondant a une seule ligne de X.
+    double predict_one(const Matrix& X,
+                       std::size_t sample_row) const;
+};
+
+} // namespace chiikaml
+```
+
+
+# --- src/linear_regression.cpp (cpp) ---
+
+```cpp
+#include "chiikaml/linear_regression.hpp"
+
+#include <stdexcept>
+#include <utility>
+#include <vector>
+
+namespace chiikaml {
+
+LinearRegression::LinearRegression(bool fit_intercept)
+    : fit_intercept_(fit_intercept),
+      fitted_(false),
+      n_features_(0),
+      intercept_(0.0) {}
+
+void LinearRegression::fit(
+    const Matrix& X,
+    const std::vector<double>& y
+) {
+    const std::size_t n_samples = X.rows();
+    const std::size_t n_features = X.cols();
+
+    if (n_samples == 0 || n_features == 0 || y.empty()) {
+        throw std::invalid_argument(
+            "The training dataset must not be empty"
+        );
+    }
+
+    if (n_samples != y.size()) {
+        throw std::invalid_argument(
+            "X.rows() must be equal to y.size()"
+        );
+    }
+
+    const std::size_t minimum_samples =
+    n_features + (fit_intercept_ ? 1 : 0);
+
+    if (n_samples < minimum_samples) {
+        throw std::invalid_argument(
+            "There are not enough samples to fit the model"
+        );
+    }
+    std::vector<double> feature_means(n_features, 0.0);
+    double target_mean = 0.0;
+
+    // Compute the feature and target means when an intercept is used.
+    if (fit_intercept_) {
+        for (std::size_t i = 0; i < n_samples; ++i) {
+            target_mean += y[i];
+
+            for (std::size_t j = 0; j < n_features; ++j) {
+                feature_means[j] += X(i, j);
+            }
+        }
+
+        const double inverse_sample_count =
+            1.0 / static_cast<double>(n_samples);
+
+        target_mean *= inverse_sample_count;
+
+        for (double& mean : feature_means) {
+            mean *= inverse_sample_count;
+        }
+    }
+
+    // Construct the normal-equation matrix X^T X and right-hand
+    // side X^T y directly, without explicitly creating X^T.
+    Matrix gram(n_features, n_features);
+    Matrix right_hand_side(n_features, 1);
+
+    for (std::size_t i = 0; i < n_samples; ++i) {
+        const double centered_y =
+            y[i] - (fit_intercept_ ? target_mean : 0.0);
+
+        for (std::size_t j = 0; j < n_features; ++j) {
+            const double centered_x_j =
+                X(i, j)
+                - (fit_intercept_ ? feature_means[j] : 0.0);
+
+            right_hand_side(j, 0) += centered_x_j * centered_y;
+
+            // Compute only the lower triangle and mirror it because
+            // X^T X is symmetric.
+            for (std::size_t k = 0; k <= j; ++k) {
+                const double centered_x_k =
+                    X(i, k)
+                    - (fit_intercept_ ? feature_means[k] : 0.0);
+
+                gram(j, k) += centered_x_j * centered_x_k;
+            }
+        }
+    }
+
+    // Copy the lower triangle into the upper triangle.
+    for (std::size_t i = 0; i < n_features; ++i) {
+        for (std::size_t j = 0; j < i; ++j) {
+            gram(j, i) = gram(i, j);
+        }
+    }
+
+    // Solve (X^T X) * coefficients = X^T y.
+    Matrix solution = gram.solve_cholesky(right_hand_side);
+
+    std::vector<double> new_coefficients(n_features);
+
+    for (std::size_t j = 0; j < n_features; ++j) {
+        new_coefficients[j] = solution(j, 0);
+    }
+
+    double new_intercept = 0.0;
+
+    if (fit_intercept_) {
+        new_intercept = target_mean;
+
+        for (std::size_t j = 0; j < n_features; ++j) {
+            new_intercept -=
+                feature_means[j] * new_coefficients[j];
+        }
+    }
+
+    // Commit the fitted parameters only after training succeeds.
+    coefficients_ = std::move(new_coefficients);
+    intercept_ = new_intercept;
+    n_features_ = n_features;
+    fitted_ = true;
+}
+
+std::vector<double> LinearRegression::predict(
+    const Matrix& X
+) const {
+    if (!fitted_) {
+        throw std::runtime_error(
+            "The model must be fitted before prediction"
+        );
+    }
+
+    if (X.cols() != n_features_) {
+        throw std::invalid_argument(
+            "X has an incorrect number of features"
+        );
+    }
+
+    std::vector<double> predictions(X.rows());
+
+    for (std::size_t i = 0; i < X.rows(); ++i) {
+        predictions[i] = predict_one(X, i);
+    }
+
+    return predictions;
+}
+
+const std::vector<double>&
+LinearRegression::coefficients() const {
+    if (!fitted_) {
+        throw std::runtime_error(
+            "The model has not been fitted"
+        );
+    }
+
+    return coefficients_;
+}
+
+double LinearRegression::intercept() const {
+    if (!fitted_) {
+        throw std::runtime_error(
+            "The model has not been fitted"
+        );
+    }
+
+    return intercept_;
+}
+
+double LinearRegression::predict_one(
+    const Matrix& X,
+    std::size_t sample_row
+) const {
+    double prediction = intercept_;
+
+    for (std::size_t j = 0; j < n_features_; ++j) {
+        prediction += X(sample_row, j) * coefficients_[j];
+    }
+
+    return prediction;
+}
+
+} // namespace chiikaml
+```
+
+
+# --- include/chiikaml/ridge_regression.hpp (cpp) ---
+
+```cpp
+#pragma once
+
+#include <cstddef>
+#include <vector>
+
+#include "chiikaml/matrix.hpp"
+
+namespace chiikaml {
+
+// Regression lineaire avec regularisation L2 (Ridge).
+//
+// Le modele cherche une relation lineaire entre les features X et
+// la variable cible y :
+//
+//     y_pred = X * coefficients + intercept
+//
+// Contrairement a la regression lineaire ordinaire, Ridge ajoute une
+// penalisation sur la taille des coefficients :
+//
+//     sum((y_true - y_pred)^2)
+//         + alpha * sum(coefficients[j]^2)
+//
+// Cette regularisation limite les coefficients trop grands, reduit le
+// surapprentissage et stabilise le modele lorsque des features sont
+// fortement correlees.
+//
+// L'intercept n'est pas penalise.
+class RidgeRegression {
+public:
+    // alpha controle la force de la regularisation et doit etre
+    // positif ou nul :
+    //
+    // - alpha = 0 : equivalent a une regression lineaire ordinaire ;
+    // - alpha faible : regularisation legere ;
+    // - alpha eleve : coefficients davantage rapproches de zero.
+    //
+    // Si fit_intercept vaut true, le modele apprend une constante
+    // en plus des coefficients associes aux features.
+    explicit RidgeRegression(
+        double alpha = 1.0,
+        bool fit_intercept = true
+    );
+
+    // Entraine le modele.
+    //
+    // X : une ligne par echantillon, une colonne par feature.
+    // y : une valeur cible par ligne de X.
+    //
+    // X.rows() doit etre egal a y.size().
+    // X et y ne doivent pas etre vides.
+    //
+    // L'entrainement resout le systeme :
+    //
+    //     (X^T X + alpha * I) * coefficients = X^T y
+    //
+    // en utilisant une decomposition de Cholesky.
+    void fit(const Matrix& X, const std::vector<double>& y);
+
+    // Predit une valeur pour chaque ligne de X.
+    //
+    // X doit avoir le meme nombre de colonnes que le jeu
+    // d'entrainement. Doit etre appelee apres fit().
+    std::vector<double> predict(const Matrix& X) const;
+
+    // Renvoie les coefficients appris, dans le meme ordre que les
+    // colonnes du jeu d'entrainement.
+    const std::vector<double>& coefficients() const;
+
+    // Renvoie l'intercept appris.
+    //
+    // Vaut toujours 0 si le modele a ete construit avec
+    // fit_intercept = false.
+    double intercept() const;
+
+    // Renvoie la force de regularisation utilisee par le modele.
+    double alpha() const;
+
+private:
+    double alpha_;
+    bool fit_intercept_;
+    bool fitted_;
+    std::size_t n_features_;
+
+    std::vector<double> coefficients_;
+    double intercept_;
+
+    // Predit la valeur correspondant a une seule ligne de X.
+    double predict_one(const Matrix& X,
+                       std::size_t sample_row) const;
+};
+
+} // namespace chiikaml
+```
+
+
+# --- include/chiikaml/random_forest.hpp (cpp) ---
+
+```cpp
+#pragma once
+
+#include <cstddef>
+#include <random>
+#include <utility>
+#include <vector>
+
+#include "chiikaml/decision_tree.hpp"
+#include "chiikaml/matrix.hpp"
+
+namespace chiikaml {
+
+// Random Forest : un ensemble de n_trees DecisionTreeClassifier
+// entraines independamment, dont on combine les predictions par
+// vote majoritaire. Deux ingredients par rapport a un arbre seul :
+//
+//  - Bagging (Bootstrap AGGregatING) : chaque arbre n'est pas
+//    entraine sur X/y tel quel, mais sur un "echantillon bootstrap"
+//    -- X.rows() points tires AVEC REMISE (contrairement a
+//    KMeans::fit, qui tirait des centres SANS remise via
+//    std::sample). Avec remise : un meme point peut etre tire
+//    plusieurs fois, d'autres pas du tout. Ca decorrele les arbres
+//    entre eux (chacun voit une vue legerement differente des
+//    donnees), ce qui rend le vote majoritaire plus robuste qu'un
+//    arbre unique face au bruit/aux valeurs aberrantes.
+//
+//  - Multithreading : les n_trees arbres sont totalement
+//    independants les uns des autres une fois leur echantillon
+//    bootstrap tire -- aucun n'a besoin de connaitre le resultat
+//    d'un autre pour s'entrainer. C'est ce qu'on appelle
+//    "embarrassingly parallel" : on peut les entrainer en parallele,
+//    un thread par arbre, sans aucune synchronisation complexe.
+//
+// Pourquoi c'est thread-safe ICI precisement (a comprendre avant
+// d'ecrire le code, pas juste a appliquer) :
+//  1. Chaque thread ecrit dans un index DIFFERENT de trees_ (le
+//     thread t ne touche jamais que trees_[t]) -- pas d'ecriture
+//     concurrente sur la meme donnee.
+//  2. Chaque thread utilise son PROPRE generateur aleatoire local
+//     (un std::mt19937 construit dans le thread, pas partage) --
+//     std::mt19937 n'est PAS thread-safe : plusieurs threads qui
+//     appelleraient le meme generateur en meme temps corrompraient
+//     son etat interne (data race, comportement indefini). D'ou
+//     seed_ (juste un entier, trivialement copiable) stocke comme
+//     membre plutot qu'un unique std::mt19937 partage comme dans
+//     KMeans -- chaque thread construit son propre generateur a
+//     partir de seed_ + son numero d'arbre, pour rester reproductible
+//     tout en etant independant.
+//  3. X et y sont seulement LUS (jamais modifies) par les threads --
+//     des lectures concurrentes sans aucune ecriture concurrente sont
+//     toujours sures, pas besoin de mutex.
+class RandomForestClassifier {
+public:
+    explicit RandomForestClassifier(std::size_t n_trees = 10, std::size_t max_depth = 5,
+                                     std::size_t min_samples_split = 2, unsigned int seed = 42);
+
+    void fit(const Matrix& X, std::vector<int> y);
+
+    std::vector<int> predict(const Matrix& X) const;
+
+private:
+    std::size_t n_trees_;
+    std::size_t max_depth_;
+    std::size_t min_samples_split_;
+    unsigned int seed_;
+
+    // DecisionTreeClassifier contient un std::unique_ptr<Node> --
+    // donc DecisionTreeClassifier lui-meme n'est PAS copiable (le
+    // compilateur supprime automatiquement le constructeur de copie
+    // d'une classe qui a un membre non copiable), seulement
+    // deplacable. On ne peut donc pas faire
+    // "std::vector<DecisionTreeClassifier> trees_(n_trees_, un_arbre)"
+    // (ca copierait un_arbre n_trees_ fois) -- il faut construire
+    // chaque arbre directement a sa place dans le vector (regarde
+    // emplace_back).
+    std::vector<DecisionTreeClassifier> trees_;
+
+    // Tire X.rows() indices AVEC remise dans [0, X.rows()) en
+    // utilisant rng, et renvoie le sous-ensemble (X, y)
+    // correspondant. rng est passe par reference (pas par valeur) :
+    // on veut que les tirages consomment/avancent l'etat du meme
+    // generateur a chaque appel, pas repartir d'un generateur figé a
+    // chaque fois.
+    static std::pair<Matrix, std::vector<int>> bootstrap_sample(const Matrix& X, const std::vector<int>& y,
+                                                                  std::mt19937& rng);
+
+    // Vote majoritaire parmi les predictions des n_trees_ arbres pour
+    // UN point. Meme principe que KNNClassifier::predict_one ou
+    // DecisionTreeClassifier::majority_class -- volontairement
+    // reimplemente ici plutot que partage entre les trois classes,
+    // une piste de refactoring a garder en tete pour plus tard.
+    static int majority_vote(const std::vector<int>& votes);
+};
+
+} // namespace chiikaml
+
+```
+
+
+# --- src/random_forest.cpp (cpp) ---
+
+```cpp
+#include "chiikaml/random_forest.hpp"
+
+#include <stdexcept>
+#include <thread>
+#include <unordered_map>
+
+namespace chiikaml {
+
+// TODO(toi): stocke les 4 parametres. Rien d'autre a faire ici --
+// trees_ reste un vector<DecisionTreeClassifier> vide jusqu'a fit().
+RandomForestClassifier::RandomForestClassifier(std::size_t n_trees, std::size_t max_depth,
+                                                 std::size_t min_samples_split, unsigned int seed) {
+    n_trees_ = n_trees;
+    max_depth_ = max_depth;
+    min_samples_split_ = min_samples_split;
+    seed_ = seed;
+}
+
+// TODO(toi):
+// - construis X_sample (Matrix(X.rows(), X.cols())) et y_sample
+//   (vector<int> vide, avec reserve(X.rows()) si tu veux)
+// - std::uniform_int_distribution<std::size_t> dist(0, X.rows() - 1);
+// - repete X.rows() fois : tire un indice avec dist(rng), copie la
+//   ligne correspondante de X dans la prochaine ligne de X_sample
+//   (boucle sur les colonnes, comme dans DecisionTreeClassifier::build),
+//   et push_back le label correspondant dans y_sample
+// - renvoie {X_sample, y_sample} (une paire, construite directement,
+//   pas besoin de std::make_pair)
+std::pair<Matrix, std::vector<int>> RandomForestClassifier::bootstrap_sample(const Matrix& X,
+                                                                               const std::vector<int>& y,
+                                                                               std::mt19937& rng) {
+    Matrix X_sample(X.rows(), X.cols());
+    std::vector<int> y_sample;
+    y_sample.reserve(X.rows());
+
+    std::uniform_int_distribution<std::size_t> dist(0, X.rows() - 1);
+    for (std::size_t i = 0; i < X.rows(); ++i) {
+        std::size_t idx = dist(rng);
+        for (std::size_t j = 0; j < X.cols(); ++j) {
+            X_sample(i, j) = X(idx, j);
+        }
+        y_sample.push_back(y[idx]);
+    }
+    return {X_sample, y_sample};
+}
+
+// TODO(toi): identique au vote majoritaire deja ecrit dans
+// KNNClassifier/DecisionTreeClassifier (unordered_map<int, size_t>
+// qui compte, on garde le plus grand compte).
+int RandomForestClassifier::majority_vote(const std::vector<int>& votes) {
+    std::unordered_map<int, std::size_t> vote_counts;
+    for (const auto& vote : votes) {
+        vote_counts[vote]++;
+    }
+
+    int majority_class = votes[0];
+    std::size_t max_count = 0;
+    for (const auto& [label, count] : vote_counts) {
+        if (count > max_count) {
+            max_count = count;
+            majority_class = label;
+        }
+    }
+    return majority_class;
+}
+
+// TODO(toi), etape par etape :
+//
+// 1) Pre-construis les arbres, SEQUENTIELLEMENT (avant de lancer le
+//    moindre thread) : trees_.reserve(n_trees_), puis n_trees_ fois
+//    trees_.emplace_back(max_depth_, min_samples_split_) --
+//    emplace_back construit l'objet directement dans le vector, ce
+//    qui evite le probleme de copie explique dans le header.
+//
+// 2) Lance un thread par arbre : un std::vector<std::thread> threads,
+//    et pour chaque indice t de 0 a n_trees_, threads.emplace_back
+//    avec une lambda qui :
+//      - capture [this, &X, &y, t] (this pour acceder a trees_/seed_,
+//        X/y par reference car on ne fait que les lire, t par valeur
+//        car chaque thread a besoin de SA propre copie de l'indice)
+//      - construit un std::mt19937 local, seed_ + t comme graine
+//      - appelle bootstrap_sample(X, y, ce generateur local)
+//      - appelle trees_[t].fit(...) avec le resultat
+//
+// 3) Attend que tous les threads terminent : pour chaque thread dans
+//    threads, appelle .join() (sinon le programme plante en quittant
+//    fit() avec des threads encore actifs)
+void RandomForestClassifier::fit(const Matrix& X, std::vector<int> y) {
+    trees_.reserve(n_trees_);
+    std::vector<std::thread> threads;
+    for (std::size_t t = 0; t < n_trees_; ++t){
+        trees_.emplace_back(max_depth_, min_samples_split_);
+        threads.emplace_back([this, &X, &y, t]() {
+            std::mt19937 rng(seed_ + t);
+            auto [X_sample, y_sample] = bootstrap_sample(X, y, rng);
+            trees_[t].fit(X_sample, std::move(y_sample));
+        });
+    }
+    for (auto& thread : threads) {
+        thread.join();
+    }
+}
+
+// TODO(toi):
+// - pour chaque arbre de trees_, appelle tree.predict(X) (un appel
+//   PAR ARBRE, pas par point -- on reutilise le predict() deja
+//   ecrit dans DecisionTreeClassifier, qui traite tout X d'un coup)
+//   et stocke le resultat (un vector<int> par arbre)
+// - pour chaque ligne i de X, rassemble le vote de chaque arbre a
+//   la position i, et appelle majority_vote dessus
+std::vector<int> RandomForestClassifier::predict(const Matrix& X) const {
+    std::vector<std::vector<int>> predictions;
+    for (const auto& tree : trees_) {
+        auto tree_predictions = tree.predict(X);
+        predictions.push_back(std::move(tree_predictions));
+    }
+    std::vector<int> final_predictions;
+    for (std::size_t i = 0; i < X.rows(); ++i) {
+        std::vector<int> votes;
+        for (const auto& preds : predictions) {
+            votes.push_back(preds[i]);
+        }
+        final_predictions.push_back(majority_vote(votes));
+    }
+    return final_predictions;
+}
+
+} // namespace chiikaml
+
+```
+
+
+# --- include/chiikaml/kmeans.hpp (cpp) ---
+
+```cpp
+#pragma once
+
+#include <cstddef>
+#include <random>
+#include <vector>
+
+#include "chiikaml/matrix.hpp"
+
+namespace chiikaml {
+
+// Clustering par K-Means (algorithme de Lloyd) : partitionne les
+// lignes de X en n_clusters groupes, en alternant deux etapes :
+//  - affectation : chaque point rejoint le centre (centroide) le
+//    plus proche
+//  - mise a jour : chaque centre devient la moyenne des points qui
+//    lui sont actuellement assignes
+// jusqu'a ce que plus aucune affectation ne change (convergence) ou
+// que max_iterations soit atteint (garde-fou : Lloyd converge presque
+// toujours vite en pratique, mais rien ne garantit une borne stricte).
+//
+// Les centres initiaux sont tires au sort (sans remise) parmi les
+// points de X -- volontairement simple pour cette premiere version.
+// C'est une limite connue : un mauvais tirage initial peut faire
+// converger vers un optimum local mediocre (ex: deux centres tires
+// dans le meme vrai cluster). Une amelioration classique,
+// k-means++, choisit les centres initiaux pour qu'ils soient deja
+// eloignes les uns des autres -- pas implementee ici, mais a garder
+// en tete comme piste d'amelioration.
+//
+// `seed` rend le tirage reproductible : memes donnees + meme seed =
+// meme resultat, a chaque execution. Utile pour les tests, et plus
+// generalement une bonne pratique en ML (une experience qu'on ne
+// peut pas reproduire est difficile a deboguer ou a comparer).
+class KMeans {
+public:
+    explicit KMeans(std::size_t n_clusters, std::size_t max_iterations = 100,
+                     unsigned int seed = 42);
+
+    // Calcule les centres a partir des points de X (une ligne = un
+    // point). Modifie centroids_ et labels_.
+    void fit(const Matrix& X);
+
+    // Assigne chaque ligne de X au centre le plus proche parmi ceux
+    // trouves par fit() (doit etre appelee apres fit()). Contrairement
+    // a fit(), ne modifie jamais les centres : sert a classer de
+    // nouveaux points par rapport a un clustering deja calcule.
+    std::vector<std::size_t> predict(const Matrix& X) const;
+
+    // Le cluster assigne a chaque point d'entrainement (valide apres fit()).
+    const std::vector<std::size_t>& labels() const;
+
+    // Les n_clusters centres trouves (valide apres fit()).
+    const Matrix& centroids() const;
+
+private:
+    std::size_t n_clusters_;
+    std::size_t max_iterations_;
+    std::mt19937 rng_;
+
+    Matrix centroids_;
+    std::vector<std::size_t> labels_;
+
+    // Indice du centre (dans centroids_) le plus proche de la ligne
+    // `row` de `points`. Utilisee a la fois par fit() (etape
+    // d'affectation) et predict() -- la meme operation au fond.
+    std::size_t nearest_centroid(const Matrix& points, std::size_t row) const;
+
+    // Ne depend d'aucun etat de KMeans (pas de centroids_, pas de
+    // rng_) : les deux points compares sont entierement donnes par
+    // les parametres. Une fonction qui n'a pas besoin de `this` peut
+    // etre declaree `static` -- elle appartient toujours a la classe
+    // (namespacee comme KMeans::squared_distance), mais s'appelle
+    // sans instance et ne peut pas acceder aux membres non-statiques.
+    static double squared_distance(const Matrix& a, std::size_t row_a, const Matrix& b,
+                                    std::size_t row_b);
+};
+
+} // namespace chiikaml
+
+```
+
+
+# --- chiikamini/generate.py (python) ---
+
+```python
+"""Boucle de generation autoregressive : greedy ou sampling
+(temperature / top-k / top-p), sans KV-cache pour la v1 (recalcule tout
+l'historique a chaque nouveau token -- simple et correct, mais O(seq^2)
+plutot que O(seq) ; suffisant pour valider la plomberie d'une app sur
+des sequences courtes). Le KV-cache est une optimisation a ajouter
+ensuite si la latence pose probleme -- pas un pre-requis pour tester
+chiikaScreen.
+"""
+
+import torch
+import torch.nn.functional as F
+
+from chiikamini.model import ChiikaMiniForCausalLM, ChiikaMiniVLM
+
+
+@torch.no_grad()
+def generate(
+    model: ChiikaMiniForCausalLM | ChiikaMiniVLM,
+    input_ids: torch.Tensor,
+    images: torch.Tensor | None,
+    max_new_tokens: int,
+    temperature: float = 1.0,
+    top_k: int | None = None,
+    eos_token_id: int | None = None,
+) -> torch.Tensor:
+    """
+    input_ids: (batch, seq) -- prompt initial
+    images: passe a model.forward si c'est un ChiikaMiniVLM, ignore sinon
+    return: (batch, seq + n) -- input_ids etendu des tokens generes
+            (n <= max_new_tokens, s'arrete plus tot si eos_token_id est
+            genere par TOUTES les sequences du batch)
+
+    TODO, boucle for _ in range(max_new_tokens):
+    1. Appeler le modele sur la sequence courante (tronquee a
+       cfg.max_seq_len si besoin -- garder les `max_seq_len` derniers
+       tokens) :
+         if isinstance(model, ChiikaMiniVLM): logits, _ = model(input_ids, images=images)
+         else: logits, _ = model(input_ids)
+    2. Prendre les logits du DERNIER token : next_token_logits = logits[:, -1, :]
+    3. Si temperature == 0: next_token = argmax (greedy).
+       Sinon :
+         a. next_token_logits = next_token_logits / temperature
+         b. si top_k: ne garder que les top_k logits, mettre le reste a -inf
+            (torch.topk puis masquer, ou torch.where)
+         c. probs = F.softmax(next_token_logits, dim=-1)
+         d. next_token = torch.multinomial(probs, num_samples=1)
+    4. input_ids = torch.cat([input_ids, next_token], dim=1)
+    5. Si eos_token_id is not None et que next_token == eos_token_id
+       pour toutes les sequences du batch : break.
+    6. return input_ids
+    """
+    for _ in range(max_new_tokens):
+        if isinstance(model, ChiikaMiniVLM):
+            logits, _ = model(input_ids, images=images)
+        else:
+            logits, _ = model(input_ids)
+
+        next_token_logits = logits[:, -1, :]
+
+        if temperature == 0:
+            next_token = next_token_logits.argmax(dim=-1, keepdim=True)
+        else:
+            next_token_logits = next_token_logits / temperature
+            if top_k is not None:
+                top_values, _ = torch.topk(next_token_logits, top_k, dim=-1)
+                threshold = top_values[:, -1, None]
+                next_token_logits = torch.where(
+                    next_token_logits < threshold,
+                    torch.full_like(next_token_logits, float("-inf")),
+                    next_token_logits,
+                )
+            probs = F.softmax(next_token_logits, dim=-1)
+            next_token = torch.multinomial(probs, num_samples=1)
+
+        input_ids = torch.cat([input_ids, next_token], dim=1)
+
+        if eos_token_id is not None and (next_token == eos_token_id).all():
+            break
+
+    return input_ids
+
+```
+
+
+# --- chiikamini/train.py (python) ---
+
+```python
+"""Boucle d'entrainement minimale : AdamW + clipping de gradient +
+scheduler de LR basique (warmup lineaire puis cosine decay -- standard
+sur a peu pres tous les papiers cites dans PAPERS.md). Pas de
+distribution multi-GPU, pas de mixed precision avancee -- ce modele est
+prevu pour tourner sur un seul CPU/GPU de dev.
+"""
+
+import torch
+import math
+from torch.utils.data import DataLoader
+
+from chiikamini.utils import count_parameters, get_device, set_seed
+
+
+def train_step(model: torch.nn.Module, batch, optimizer: torch.optim.Optimizer, grad_clip: float = 1.0) -> float:
+    """
+    batch: tuple retourne par le Dataset (voir data.py) -- (input_ids, labels)
+           pour texte seul, ou (input_ids, images, labels) pour le VLM.
+    return: la valeur scalaire de la loss (float, pour logging).
+
+    TODO:
+    1. optimizer.zero_grad()
+    2. Deballer batch, appeler model(...) avec labels pour recuperer
+       (logits, loss) -- voir la signature de forward dans model.py
+       selon que c'est ChiikaMiniForCausalLM ou ChiikaMiniVLM.
+    3. loss.backward()
+    4. torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+       (evite les explosions de gradient en debut d'entrainement --
+       frequent avec RMSNorm + petits batches)
+    5. optimizer.step()
+    6. return loss.item()
+    """
+    optimizer.zero_grad()
+    input_ids, labels = batch
+    logits, loss = model(input_ids, labels=labels)
+    loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+    optimizer.step()
+    return loss.item()
+
+
+def make_lr_scheduler(optimizer: torch.optim.Optimizer, warmup_steps: int, total_steps: int):
+    """
+    return: un objet avec une methode .step() qui ajuste optimizer.param_groups[*]['lr'].
+
+    TODO: le plus simple est torch.optim.lr_scheduler.LambdaLR avec une
+    fonction lr_lambda(step) qui fait :
+    - montee lineaire de 0 a 1 pendant les `warmup_steps` premiers pas
+    - puis decroissance cosine de 1 a ~0 jusqu'a `total_steps`
+    (formule cosine standard : 0.5 * (1 + cos(pi * progress)), avec
+    progress = (step - warmup_steps) / (total_steps - warmup_steps))
+    """
+    def lr_lambda(step):
+        if step < warmup_steps:
+            return step / warmup_steps
+        else:
+            progress = (step - warmup_steps) / (total_steps - warmup_steps)
+            return 0.5 * (1 + math.cos(torch.tensor(progress * 3.141592653589793)))
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+
+
+def train_loop(
+    model: torch.nn.Module,
+    dataset,
+    n_epochs: int,
+    batch_size: int,
+    lr: float = 3e-4,
+    warmup_steps: int = 100,
+    seed: int = 0,
+) -> None:
+    """
+    Boucle complete : DataLoader -> train_step par batch -> logging
+    (print) de la loss toutes les N steps.
+
+    TODO:
+    1. set_seed(seed)
+    2. device = get_device() ; model.to(device)
+    3. print(f"parametres entrainables: {count_parameters(model):,}")
+    4. loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    5. optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.1)
+    6. total_steps = n_epochs * len(loader)
+    7. scheduler = make_lr_scheduler(optimizer, warmup_steps, total_steps)
+    8. Boucle sur les epochs puis les batches :
+       - deplacer le batch sur `device`
+       - loss = train_step(model, batch, optimizer)
+       - scheduler.step()
+       - logguer la loss (ex: tous les 10 steps)
+    """
+    set_seed(seed)
+    device = get_device()
+    model.to(device)
+    print(f"parametres entrainables: {count_parameters(model):,}")
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.1)
+    total_steps = n_epochs * len(loader)
+    scheduler = make_lr_scheduler(optimizer, warmup_steps, total_steps)
+    for epoch in range(n_epochs):
+        for step, batch in enumerate(loader):
+            batch = [item.to(device) for item in batch]
+            loss = train_step(model, batch, optimizer)
+            if step % 10 == 0:
+                print(f"Epoch {epoch}, Step {step}, Loss: {loss:.4f}")
+            scheduler.step()
+
+```
+
+
+# --- chiikamini/checkpoint.py (python) ---
+
+```python
+"""Sauvegarde/chargement des poids + publication sur le Hugging Face Hub.
+
+Format : safetensors, pas .pt/pickle -- standard sur le Hub, et plus sur
+(torch.load sur un fichier .pt peut executer du code arbitraire au
+chargement si le fichier est malveillant ; safetensors ne contient que
+des tenseurs bruts, rien d'executable).
+
+Piege verifie empiriquement : ChiikaMiniForCausalLM fait du weight
+tying (`lm_head.weight` et `trunk.embed_tokens.weight` sont litteralement
+le meme tenseur). `safetensors.torch.save_file` refuse un state_dict
+avec des tenseurs partages (erreur explicite). `save_model`/`load_model`
+(au lieu de `save_file`/`load_file`) gerent ce cas automatiquement --
+un seul exemplaire sauvegarde sur disque, le tying est recree tel quel
+au chargement. Verifie avec un aller-retour + comparaison de logits.
+"""
+
+import dataclasses
+import json
+from pathlib import Path
+
+from safetensors.torch import load_model, save_model
+
+from chiikamini.config import TextConfig
+from chiikamini.model import ChiikaMiniForCausalLM
+
+
+def save_checkpoint(model: ChiikaMiniForCausalLM, cfg: TextConfig, out_dir: str | Path) -> None:
+    """Sauvegarde les poids (model.safetensors) et la config (config.json)
+    dans out_dir -- les deux fichiers necessaires pour recharger le
+    modele sans deviner les hyperparametres utilises a l'entrainement.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    save_model(model, str(out_dir / "model.safetensors"))
+    (out_dir / "config.json").write_text(json.dumps(dataclasses.asdict(cfg), indent=2))
+
+
+def load_checkpoint(checkpoint_dir: str | Path) -> ChiikaMiniForCausalLM:
+    """Reconstruit un ChiikaMiniForCausalLM a partir d'un dossier produit
+    par save_checkpoint (config.json + model.safetensors)."""
+    checkpoint_dir = Path(checkpoint_dir)
+    cfg_dict = json.loads((checkpoint_dir / "config.json").read_text())
+    cfg = TextConfig(**cfg_dict)
+    model = ChiikaMiniForCausalLM(cfg)
+    load_model(model, str(checkpoint_dir / "model.safetensors"))
+    return model
+
+
+def push_to_hub(checkpoint_dir: str | Path, repo_id: str, private: bool = True) -> str:
+    """Publie un checkpoint (deja sauvegarde via save_checkpoint) sur le
+    Hugging Face Hub. Necessite d'etre deja authentifie (`hf auth login`
+    ou variable d'environnement HF_TOKEN) -- pas de token en argument ici
+    pour eviter d'en faire circuler un en clair dans le code/l'historique
+    git.
+
+    repo_id: "ton-namespace/nom-du-modele" (ex: "Crocolil/chiikamini-toy")
+    private: True par defaut -- pousse en prive tant que le modele n'est
+             qu'un test de plomberie, pas un vrai modele a partager.
+    return: l'URL du repo sur le Hub.
+    """
+    from huggingface_hub import HfApi
+
+    api = HfApi()
+    api.create_repo(repo_id, private=private, exist_ok=True)
+    api.upload_folder(folder_path=str(checkpoint_dir), repo_id=repo_id)
+    return f"https://huggingface.co/{repo_id}"
+
+```
+
+
+# --- chiikamini/utils.py (python) ---
+
+```python
+"""Boilerplate pur (pas de "vraie" logique a designer) -- deja
+implemente pour ne pas te faire perdre de temps sur des utilitaires qui
+n'ont qu'une seule facon raisonnable d'etre ecrits.
+"""
+
+import random
+
+import numpy as np
+import torch
+
+
+def set_seed(seed: int = 0) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def get_device() -> torch.device:
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
+def count_parameters(model: torch.nn.Module) -> int:
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+```

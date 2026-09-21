@@ -1,0 +1,91 @@
+Computer science notes (held-out evaluation set)
+
+An operating system manages the hardware of a computer and shares it
+between programs. A process is a running program with its own private
+address space, while a thread is a lightweight unit of execution that
+shares the address space of the process that created it. The scheduler
+decides which thread runs on which processor core and for how long.
+Virtual memory gives every process the illusion of owning a large,
+contiguous block of memory. The operating system splits that space into
+fixed-size pages and maps each page to a frame of physical memory using
+a page table. When a program touches a page that is not currently in
+physical memory, the processor raises a page fault and the operating
+system loads the missing page from disk, possibly evicting another page
+to make room.
+
+Concurrency means that several tasks make progress during overlapping
+periods of time. When two threads read and write the same variable
+without coordination, the result depends on the exact order of their
+operations, which is called a race condition. A mutex is a lock that
+only one thread can hold at a time, so the code between acquiring and
+releasing it runs without interference. If two threads each hold one
+lock and wait for the other one, neither can ever continue, and this
+situation is called a deadlock. A common way to avoid deadlocks is to
+make every thread acquire locks in the same global order.
+
+A network protocol is a set of rules that two machines follow to
+exchange data. The Internet Protocol moves packets from one machine to
+another but does not guarantee that they arrive, arrive once, or arrive
+in order. The Transmission Control Protocol builds a reliable stream on
+top of it: it numbers every byte, acknowledges what was received,
+retransmits what was lost, and slows down when the network is
+congested. The Hypertext Transfer Protocol is a request and response
+protocol on top of TCP. A client sends a method such as GET or POST
+together with a path and some headers, and the server answers with a
+status code such as 200 for success or 404 for a missing resource.
+
+A relational database stores data in tables made of rows and columns.
+A primary key uniquely identifies each row, and a foreign key links a
+row in one table to a row in another. Without an index, finding rows
+that match a condition requires scanning the whole table. An index is
+usually a balanced tree that keeps the values of a column sorted, so a
+lookup takes logarithmic time instead of linear time, at the cost of
+extra storage and slower writes. A transaction groups several
+operations so that they either all succeed or all have no effect. The
+properties atomicity, consistency, isolation, and durability describe
+what a database promises about its transactions.
+
+A compiler translates source code written by a human into a form that a
+machine can execute. The lexer first splits the text into tokens such
+as identifiers, numbers, and operators. The parser then arranges the
+tokens into a tree that reflects the grammar of the language, called
+the abstract syntax tree. Later stages check types, simplify the tree,
+and finally generate machine instructions. An interpreter skips the
+last step and executes the tree or an intermediate bytecode directly,
+which is simpler but usually slower.
+
+A cache is a small and fast memory that keeps copies of data that were
+used recently, because programs tend to use the same data again soon
+and to use data close to what they just used. When the requested data
+is in the cache, the access is a hit and is fast. Otherwise it is a
+miss and the data must be fetched from the slower memory below. A least
+recently used policy removes the entry that has not been touched for
+the longest time when the cache is full. Traversing a two dimensional
+array row by row is much faster than column by column when the array is
+stored row by row, because consecutive elements share cache lines.
+
+Recursion is a technique where a function solves a problem by calling
+itself on a smaller instance of the same problem. Every recursive
+function needs a base case that stops the recursion, otherwise the
+calls never end and the stack overflows. Computing the factorial of n
+by multiplying n with the factorial of n minus one is the classic
+example. A recursive function can often be rewritten as a loop with an
+explicit stack, which avoids the limit on the depth of the call stack.
+
+A version control system records the history of a project as a series
+of snapshots called commits. Each commit stores a reference to its
+parent, so the history forms a graph. A branch is a movable pointer to
+one commit, which lets several lines of work proceed in parallel. When
+two branches change the same lines of a file, merging them produces a
+conflict that a human has to resolve by choosing which version to keep.
+
+Linear regression fits a straight line to a set of points by choosing
+the slope and the intercept that minimize the sum of the squared
+differences between the predicted and the observed values. Ridge
+regression adds a penalty proportional to the squared size of the
+weights, which shrinks them and reduces overfitting. Lasso regression
+penalizes the absolute size of the weights instead, which can push some
+of them exactly to zero and therefore performs feature selection. A
+random forest trains many decision trees on random samples of the data
+and averages their predictions, which reduces the variance of a single
+deep tree.
