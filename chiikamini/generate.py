@@ -53,7 +53,7 @@ def generate(
         if isinstance(model, ChiikaMiniVLM):
             logits, _ = model(input_ids, images=images)
         else:
-            logits, _ = model(input_ids)
+            logits, _ = model(input_ids[:, -model.cfg.max_seq_len :])
 
         next_token_logits = logits[:, -1, :]
 
